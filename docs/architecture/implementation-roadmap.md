@@ -1,66 +1,46 @@
 # Implementation Roadmap
 
-FixHub is developed across 35 planned commits, each independently reviewed, tested, and documented.
+FixHub is developed across 35 planned commits, each independently reviewed and tested.
 
 ---
 
 ## Phase 1 — Foundation (Commits 1–4)
 
 ### Commit 1: Repository Inspection and Project Foundation
-- **Status:** 🔄 In Progress
 - **Scope:** Inspect the existing repository. Establish folder structure. Add README, `.gitignore`, environment templates, and documentation.
-- **Acceptance:** Structure created, docs complete, no code dependencies.
 
 ### Commit 2: Backend and Frontend Build Setup
-- **Status:** ⬜ Planned
-- **Scope:** Configure Spring Boot + Maven backend. Configure React + TypeScript + Vite frontend. Add compatible dependencies. Verify both applications build and start. Add basic health checks.
-- **Acceptance:** Both apps build, start, and serve responses.
+- **Scope:** Configure Spring Boot 4 + Maven backend (Java 23). Configure React + JavaScript + Vite frontend. Add compatible dependencies. Verify both applications build and start.
 
-### Commit 3: PostgreSQL and Flyway Foundation
-- **Status:** ⬜ Planned
-- **Scope:** Configure database connectivity with environment variables. Add initial Flyway migration. Verify clean database initialization. Document setup for two-computer workflow.
-- **Acceptance:** Backend connects to PostgreSQL, Flyway runs, schema is created.
+### Commit 3: PostgreSQL and Hibernate Schema Foundation
+- **Scope:** Configure database connectivity with environment variables. Configure Hibernate `ddl-auto: update` for automatic schema updates. Verify clean database connection and table creation. Document setup for both computers.
 
 ### Commit 4: Common API and Test Infrastructure
-- **Status:** ⬜ Planned
 - **Scope:** Add global exception handling and API response conventions. Configure backend and frontend test frameworks. Verify frontend-to-backend connectivity.
-- **Acceptance:** Standard error responses, test suites run, CORS works.
 
 ---
 
 ## Phase 2 — Authentication Vertical Slice (Commits 5–10)
 
 ### Commit 5: User and Authentication Data Model
-- **Status:** ⬜ Planned
-- **Scope:** Create user entity, roles, account status, and authentication identity tables. Write Flyway migrations. Test entity relationships.
-- **Acceptance:** Schema created, entities mapped, repository tests pass.
+- **Scope:** Create user entity, roles, account status, and authentication identity entities. Test entity relationships.
 
 ### Commit 6: Registration and Email Verification
-- **Status:** ⬜ Planned
 - **Scope:** Registration API + UI. Email verification. Create PENDING accounts. Validate duplicates and invalid tokens.
 - **Prerequisites:** Email/SMTP provider configuration.
-- **Acceptance:** User can register, receives verification email, account is PENDING.
 
 ### Commit 7: Email/Password Login and Logout
-- **Status:** ⬜ Planned
 - **Scope:** Login API + UI. BCrypt hashing. JWT/session handling. Protected routes. Logout.
-- **Acceptance:** User can log in through UI, access protected pages, and log out.
 
 ### Commit 8: Google OAuth 2.0
-- **Status:** ⬜ Planned
 - **Scope:** OAuth 2.0 flow (NOT OIDC). Google login button + backend callback. State validation. Identity verification via Google API. Account linking safety.
 - **Prerequisites:** Google Cloud OAuth credentials.
-- **Acceptance:** User can sign in with Google, account is created/linked correctly.
 
 ### Commit 9: Password Recovery and Account Linking
-- **Status:** ⬜ Planned
 - **Scope:** Forgot password, reset password, password setup for Google-only users. Secure token handling. Account linking rules.
-- **Acceptance:** Password reset works end-to-end, expired tokens rejected.
 
 ### Commit 10: Admin Approval Workflow
-- **Status:** ⬜ Planned
 - **Scope:** Admin registration queue. Approve/reject accounts. Pending/rejected account screens. Role and organizational detail assignment. Backend access restrictions.
-- **Acceptance:** Admin can review, approve, and reject registrations. PENDING users see waiting screen.
 
 ---
 
@@ -70,7 +50,7 @@ FixHub is developed across 35 planned commits, each independently reviewed, test
 - **Scope:** User management APIs + UI. ADMIN/USER role changes. Account status management. Document SQL for admin promotion.
 
 ### Commit 12: Ticket Model and Relationships
-- **Scope:** Ticket entities, DTOs, repositories, migrations. Define types (ISSUE, ROOM_BOOKING, RESOURCE_REQUEST, TOPIC_REQUEST), statuses, priorities, visibility.
+- **Scope:** Ticket entities, DTOs, repositories. Define types (ISSUE, ROOM_BOOKING, RESOURCE_REQUEST, TOPIC_REQUEST), statuses, priorities, visibility.
 
 ### Commit 13: Create and View Tickets
 - **Scope:** Ticket creation API + form. Basic ticket list. Connect frontend to PostgreSQL-backed APIs.
@@ -148,19 +128,18 @@ FixHub is developed across 35 planned commits, each independently reviewed, test
 - **Scope:** Room, resource, and learning-request interfaces. Validation and error states. End-to-end verification per ticket type.
 
 ### Commit 34: Regression, Integration, and Security Hardening
-- **Scope:** Complete test suite. Missing integration and regression tests. Role/status enforcement. Migration safety. Critical defect fixes.
+- **Scope:** Complete test suite. Missing integration and regression tests. Role/status enforcement. Critical defect fixes.
 
 ### Commit 35: Documentation and Deployment
-- **Scope:** Finalize README, Swagger/OpenAPI, environment examples, two-computer setup docs. Assess Docker (NOT installed — ask before implementing). Final project handover report.
+- **Scope:** Finalize README, Swagger/OpenAPI, environment examples, two-computer setup docs. Assess Docker (optional). Final project handover.
 
 ---
 
 ## Development Rules
 
 1. One commit at a time — no skipping ahead
-2. Each commit is reviewed, tested, and documented with a PDF report
+2. Each commit is reviewed and tested
 3. Manual Git commits only — never auto-committed
 4. Full-stack vertical slices — backend + frontend together
-5. No destructive database operations
-6. Environment variables for all credentials
-7. Tests must actually run before reporting results
+5. Environment variables for all credentials
+6. Tests must actually run before reporting results

@@ -22,26 +22,24 @@ All request types share a universal ticket engine with common identity, status t
 ## Technology Stack
 
 ### Backend
-- Java 17 (LTS)
-- Spring Boot 3.x
+- Java 23
+- Spring Boot 4.x
 - Maven (with Maven Wrapper)
 - Spring Security
-- Spring Data JPA + Hibernate
+- Spring Data JPA + Hibernate (`ddl-auto: update`)
 - PostgreSQL
-- Flyway (database migrations)
 - Jakarta Bean Validation
 - Springdoc OpenAPI / Swagger
 - JUnit 5 + Mockito
 
 ### Frontend
-- React
-- TypeScript (strict mode)
+- React 18
+- JavaScript (JSX)
 - Vite
 - React Router
 - Tailwind CSS
 - TanStack Query
-- React Hook Form + Zod
-- Vitest + React Testing Library
+- React Hook Form
 
 ---
 
@@ -61,11 +59,10 @@ FixHub/
 │   ├── src/
 │   ├── public/
 │   ├── package.json
-│   └── vite.config.ts
+│   └── vite.config.js
 ├── docs/
 │   ├── setup/                  # Setup and configuration guides
-│   ├── architecture/           # Architecture and design docs
-│   └── commit-reports/         # PDF reports for each commit
+│   └── architecture/           # Architecture and design docs
 ├── .env.example                # Environment variable template
 ├── .gitignore
 └── README.md
@@ -77,7 +74,7 @@ See [docs/architecture/project-structure.md](docs/architecture/project-structure
 
 ## Quick Start
 
-> **Prerequisites:** Java 17+, Node.js 18+, npm 9+, PostgreSQL 14+
+> **Prerequisites:** Java 23, Node.js 18+, npm 9+, PostgreSQL 14+
 
 ### 1. Clone the repository
 
@@ -115,7 +112,7 @@ cd backend
 # Windows: mvnw.cmd spring-boot:run
 ```
 
-The backend starts at `http://localhost:8080`. Flyway applies database migrations automatically on startup.
+The backend starts at `http://localhost:8080`. Hibernate creates and updates tables automatically on startup.
 
 ### 5. Start the frontend
 
@@ -144,7 +141,7 @@ See [docs/setup/admin-bootstrap.md](docs/setup/admin-bootstrap.md)
 | [Environment Variables](docs/setup/environment-variables.md) | All configuration variables |
 | [Admin Bootstrap](docs/setup/admin-bootstrap.md) | How to create the first administrator |
 | [Project Structure](docs/architecture/project-structure.md) | Folder layout and conventions |
-| [Implementation Roadmap](docs/architecture/implementation-roadmap.md) | 35-commit development plan |
+| [Implementation Roadmap](docs/architecture/implementation-roadmap.md) | Implementation roadmap |
 
 ---
 
@@ -163,14 +160,6 @@ New accounts start as `PENDING` until an administrator approves them.
 
 - **Email/password** — Registration, email verification, login, password recovery
 - **Google OAuth 2.0** — Google sign-in with account linking
-
----
-
-## Development
-
-This project is developed incrementally across 35 planned commits. Each commit is independently reviewed, tested, and documented with a PDF report.
-
-See [docs/architecture/implementation-roadmap.md](docs/architecture/implementation-roadmap.md) for the complete roadmap.
 
 ---
 

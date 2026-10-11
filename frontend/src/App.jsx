@@ -96,7 +96,7 @@ export function App() {
             </div>
             <div className="p-3 bg-slate-50 rounded border border-slate-100">
               <span className="block text-xs text-slate-500">Database Engine</span>
-              <span className="font-semibold text-slate-800">PostgreSQL (Flyway Migrations)</span>
+              <span className="font-semibold text-slate-800">PostgreSQL (Hibernate Auto DDL)</span>
             </div>
           </div>
         </div>
