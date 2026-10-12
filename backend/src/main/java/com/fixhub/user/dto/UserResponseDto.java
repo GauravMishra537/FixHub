@@ -15,6 +15,7 @@ public class UserResponseDto {
     private String department;
     private String designation;
     private String phoneNumber;
+    private boolean emailVerified;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -98,6 +99,14 @@ public class UserResponseDto {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public Instant getCreatedAt() {

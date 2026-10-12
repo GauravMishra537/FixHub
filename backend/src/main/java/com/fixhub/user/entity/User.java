@@ -55,6 +55,9 @@ public class User {
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -144,6 +147,14 @@ public class User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
     }
 
     public Instant getCreatedAt() {
