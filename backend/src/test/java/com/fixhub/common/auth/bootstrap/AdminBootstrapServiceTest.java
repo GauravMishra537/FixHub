@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.bootstrap;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.bootstrap.impl.AdminBootstrapServiceImpl;
 import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.entity.Role;
@@ -17,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,11 +30,14 @@ class AdminBootstrapServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AuditService auditService;
+
     private AdminBootstrapServiceImpl adminBootstrapService;
 
     @BeforeEach
     void setUp() {
-        adminBootstrapService = new AdminBootstrapServiceImpl(userRepository, passwordEncoder);
+        adminBootstrapService = new AdminBootstrapServiceImpl(userRepository, passwordEncoder, auditService);
     }
 
     @Test
@@ -40,6 +45,11 @@ class AdminBootstrapServiceTest {
         when(userRepository.existsByRole(Role.ADMIN)).thenReturn(false);
         when(userRepository.existsByEmail("admin@fixhub.com")).thenReturn(false);
         when(passwordEncoder.encode("SecureAdminPass123!")).thenReturn("hashed-bcrypt-value");
+
+        User savedUser = new User();
+        savedUser.setId(1L);
+        savedUser.setEmail("admin@fixhub.com");
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         boolean result = adminBootstrapService.bootstrapAdmin(
                 "admin@fixhub.com",
@@ -52,14 +62,16 @@ class AdminBootstrapServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
 
-        User savedUser = captor.getValue();
-        assertEquals("admin@fixhub.com", savedUser.getEmail());
-        assertEquals("hashed-bcrypt-value", savedUser.getPasswordHash());
-        assertNotEquals("SecureAdminPass123!", savedUser.getPasswordHash());
-        assertEquals(Role.ADMIN, savedUser.getRole());
-        assertEquals(AccountStatus.ACTIVE, savedUser.getStatus());
-        assertTrue(savedUser.isEmailVerified());
-        assertEquals("Initial Administrator", savedUser.getFullName());
+        User saved = captor.getValue();
+        assertEquals("admin@fixhub.com", saved.getEmail());
+        assertEquals("hashed-bcrypt-value", saved.getPasswordHash());
+        assertNotEquals("SecureAdminPass123!", saved.getPasswordHash());
+        assertEquals(Role.ADMIN, saved.getRole());
+        assertEquals(AccountStatus.ACTIVE, saved.getStatus());
+        assertTrue(saved.isEmailVerified());
+        assertEquals("Initial Administrator", saved.getFullName());
+
+        verify(auditService).logEvent(eq("ADMIN_BOOTSTRAPPED"), eq(1L), eq("admin@fixhub.com"), anyString());
     }
 
     @Test
@@ -74,6 +86,7 @@ class AdminBootstrapServiceTest {
 
         assertFalse(result);
         verify(userRepository, never()).save(any());
+        verify(auditService, never()).logEvent(any(), any(), any(), any());
     }
 
     @Test
@@ -89,6 +102,7 @@ class AdminBootstrapServiceTest {
 
         assertFalse(result);
         verify(userRepository, never()).save(any());
+        verify(auditService, never()).logEvent(any(), any(), any(), any());
     }
 
     @Test
@@ -101,6 +115,7 @@ class AdminBootstrapServiceTest {
         assertFalse(adminBootstrapService.bootstrapAdmin("invalid-email", "SecurePass123!", "Admin"));
 
         verify(userRepository, never()).save(any());
+        verify(auditService, never()).logEvent(any(), any(), any(), any());
     }
 
     @Test

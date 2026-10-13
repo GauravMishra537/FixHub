@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.service.impl;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.dto.RegisterRequestDto;
 import com.fixhub.common.auth.entity.VerificationToken;
 import com.fixhub.common.auth.repository.VerificationTokenRepository;
@@ -16,8 +17,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,17 +34,22 @@ public class RegistrationServiceImpl implements RegistrationService {
     private final VerificationTokenRepository verificationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final AuditService auditService;
 
-    public RegistrationServiceImpl(UserRepository userRepository,
-                                   UserMapper userMapper,
-                                   VerificationTokenRepository verificationTokenRepository,
-                                   PasswordEncoder passwordEncoder,
-                                   EmailService emailService) {
+    public RegistrationServiceImpl(
+            UserRepository userRepository,
+            UserMapper userMapper,
+            VerificationTokenRepository verificationTokenRepository,
+            PasswordEncoder passwordEncoder,
+            EmailService emailService,
+            AuditService auditService
+    ) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.auditService = auditService;
     }
 
     @Override
@@ -62,12 +72,14 @@ public class RegistrationServiceImpl implements RegistrationService {
 
         User savedUser = userRepository.save(user);
 
-        String token = UUID.randomUUID().toString();
+        String rawToken = UUID.randomUUID().toString();
+        String tokenHash = hashToken(rawToken);
         Instant expiryDate = Instant.now().plus(24, ChronoUnit.HOURS);
-        VerificationToken verificationToken = new VerificationToken(token, savedUser, expiryDate);
+        VerificationToken verificationToken = new VerificationToken(tokenHash, savedUser, expiryDate);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFullName(), token);
+        emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFullName(), rawToken);
+        auditService.logEvent("USER_REGISTERED", savedUser.getId(), savedUser.getEmail(), "New user account registered");
 
         return userMapper.toDto(savedUser);
     }
@@ -78,7 +90,11 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new BadRequestException("Verification token is required");
         }
 
-        VerificationToken verificationToken = verificationTokenRepository.findByToken(token.trim())
+        String raw = token.trim();
+        String tokenHash = hashToken(raw);
+
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(tokenHash)
+                .or(() -> verificationTokenRepository.findByToken(raw))
                 .orElseThrow(() -> new BadRequestException("Invalid or expired verification token"));
 
         if (verificationToken.isUsed()) {
@@ -95,6 +111,8 @@ public class RegistrationServiceImpl implements RegistrationService {
         User user = verificationToken.getUser();
         user.setEmailVerified(true);
         userRepository.save(user);
+
+        auditService.logEvent("EMAIL_VERIFIED", user.getId(), user.getEmail(), "User email verified");
     }
 
     @Override
@@ -111,17 +129,36 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new BadRequestException("Email is already verified");
         }
 
-        verificationTokenRepository.findByUserAndUsedFalse(user)
-                .ifPresent(existingToken -> {
-                    existingToken.setUsed(true);
-                    verificationTokenRepository.save(existingToken);
-                });
+        List<VerificationToken> existingTokens = verificationTokenRepository.findAllByUserAndUsedFalse(user);
+        for (VerificationToken existingToken : existingTokens) {
+            existingToken.setUsed(true);
+        }
+        verificationTokenRepository.saveAll(existingTokens);
 
-        String token = UUID.randomUUID().toString();
+        String rawToken = UUID.randomUUID().toString();
+        String tokenHash = hashToken(rawToken);
         Instant expiryDate = Instant.now().plus(24, ChronoUnit.HOURS);
-        VerificationToken verificationToken = new VerificationToken(token, user, expiryDate);
+        VerificationToken verificationToken = new VerificationToken(tokenHash, user, expiryDate);
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), token);
+        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), rawToken);
+    }
+
+    private String hashToken(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encodedHash = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : encodedHash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
     }
 }

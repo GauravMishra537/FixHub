@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.service;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.dto.RegisterRequestDto;
 import com.fixhub.common.auth.entity.VerificationToken;
 import com.fixhub.common.auth.repository.VerificationTokenRepository;
@@ -14,12 +15,14 @@ import com.fixhub.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,6 +45,9 @@ class RegistrationServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private AuditService auditService;
+
     private UserMapper userMapper;
     private RegistrationServiceImpl registrationService;
 
@@ -53,7 +59,8 @@ class RegistrationServiceTest {
                 userMapper,
                 verificationTokenRepository,
                 passwordEncoder,
-                emailService
+                emailService,
+                auditService
         );
     }
 
@@ -83,8 +90,14 @@ class RegistrationServiceTest {
         assertFalse(response.isEmailVerified());
         assertEquals(AccountStatus.PENDING, response.getStatus());
 
-        verify(verificationTokenRepository).save(any(VerificationToken.class));
+        ArgumentCaptor<VerificationToken> tokenCaptor = ArgumentCaptor.forClass(VerificationToken.class);
+        verify(verificationTokenRepository).save(tokenCaptor.capture());
+        assertNotNull(tokenCaptor.getValue().getToken());
+        // Verify token is hashed with SHA-256 (64 hex characters)
+        assertEquals(64, tokenCaptor.getValue().getToken().length());
+
         verify(emailService).sendVerificationEmail(eq("sarah@example.com"), eq("Sarah Connor"), anyString());
+        verify(auditService).logEvent(eq("USER_REGISTERED"), eq(10L), eq("sarah@example.com"), anyString());
     }
 
     @Test
@@ -99,30 +112,32 @@ class RegistrationServiceTest {
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> registrationService.register(request));
         assertTrue(ex.getMessage().contains("already registered"));
-        verify(userRepository, never()).save(any(User.class));
-        verify(emailService, never()).sendVerificationEmail(any(), any(), any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test
     void verifyEmail_Success() {
         User user = new User("user@example.com", "hash", "User", Role.USER, AccountStatus.PENDING);
+        user.setId(20L);
         user.setEmailVerified(false);
 
-        VerificationToken token = new VerificationToken("valid-token", user, Instant.now().plus(1, ChronoUnit.HOURS));
+        VerificationToken token = new VerificationToken("hashed-token-value", user, Instant.now().plus(1, ChronoUnit.HOURS));
 
-        when(verificationTokenRepository.findByToken("valid-token")).thenReturn(Optional.of(token));
+        when(verificationTokenRepository.findByToken(anyString())).thenReturn(Optional.of(token));
 
-        registrationService.verifyEmail("valid-token");
+        registrationService.verifyEmail("raw-token");
 
         assertTrue(token.isUsed());
         assertTrue(user.isEmailVerified());
+        assertEquals(AccountStatus.PENDING, user.getStatus()); // Does NOT auto-activate account
         verify(verificationTokenRepository).save(token);
         verify(userRepository).save(user);
+        verify(auditService).logEvent(eq("EMAIL_VERIFIED"), eq(20L), eq("user@example.com"), anyString());
     }
 
     @Test
     void verifyEmail_InvalidToken_ThrowsBadRequestException() {
-        when(verificationTokenRepository.findByToken("non-existent")).thenReturn(Optional.empty());
+        when(verificationTokenRepository.findByToken(anyString())).thenReturn(Optional.empty());
 
         assertThrows(BadRequestException.class, () -> registrationService.verifyEmail("non-existent"));
     }
@@ -133,7 +148,7 @@ class RegistrationServiceTest {
         VerificationToken token = new VerificationToken("used-token", user, Instant.now().plus(1, ChronoUnit.HOURS));
         token.setUsed(true);
 
-        when(verificationTokenRepository.findByToken("used-token")).thenReturn(Optional.of(token));
+        when(verificationTokenRepository.findByToken(anyString())).thenReturn(Optional.of(token));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> registrationService.verifyEmail("used-token"));
         assertTrue(ex.getMessage().contains("already been used"));
@@ -144,22 +159,28 @@ class RegistrationServiceTest {
         User user = new User("user@example.com", "hash", "User", Role.USER, AccountStatus.PENDING);
         VerificationToken token = new VerificationToken("expired-token", user, Instant.now().minus(1, ChronoUnit.HOURS));
 
-        when(verificationTokenRepository.findByToken("expired-token")).thenReturn(Optional.of(token));
+        when(verificationTokenRepository.findByToken(anyString())).thenReturn(Optional.of(token));
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> registrationService.verifyEmail("expired-token"));
         assertTrue(ex.getMessage().contains("expired"));
     }
 
     @Test
-    void resendVerification_Success() {
+    void resendVerification_InvalidatesPreviousTokens_AndSendsNew() {
         User user = new User("resend@example.com", "hash", "Resend User", Role.USER, AccountStatus.PENDING);
         user.setEmailVerified(false);
 
+        VerificationToken oldToken1 = new VerificationToken("old-token-1", user, Instant.now().plus(10, ChronoUnit.HOURS));
+        VerificationToken oldToken2 = new VerificationToken("old-token-2", user, Instant.now().plus(10, ChronoUnit.HOURS));
+
         when(userRepository.findByEmail("resend@example.com")).thenReturn(Optional.of(user));
-        when(verificationTokenRepository.findByUserAndUsedFalse(user)).thenReturn(Optional.empty());
+        when(verificationTokenRepository.findAllByUserAndUsedFalse(user)).thenReturn(List.of(oldToken1, oldToken2));
 
         registrationService.resendVerification("resend@example.com");
 
+        assertTrue(oldToken1.isUsed());
+        assertTrue(oldToken2.isUsed());
+        verify(verificationTokenRepository).saveAll(List.of(oldToken1, oldToken2));
         verify(verificationTokenRepository).save(any(VerificationToken.class));
         verify(emailService).sendVerificationEmail(eq("resend@example.com"), eq("Resend User"), anyString());
     }

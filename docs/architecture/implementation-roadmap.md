@@ -41,10 +41,14 @@ FixHub is developed across 35 planned commits, each independently reviewed and t
 - **Frontend:** Complete registration page, validation, password confirmation, loading states, duplicate email feedback, registration success screen, email verification screen.
 - **Acceptance:** Registration works browser-to-database; passwords hashed; verification required.
 
-#### Commit 7 — Complete Login and Logout Module
-- **Backend:** Login DTO, `AuthenticationService`, credential verification, account status checks (`PENDING`/`SUSPENDED`/`REJECTED` rejection), JWT/session generation, `/api/auth/login` and `/api/auth/logout`.
-- **Frontend:** Complete login page, field validation, loading states, invalid credential feedback, account state messaging, auth context, protected route wrappers, post-login redirection, logout action.
-- **Acceptance:** Active users can log in and log out; protected APIs reject unauthorized calls.
+#### Commit 7 — Complete Login, Initial Admin Provisioning, and Security Reconciliation
+- **Backend:**
+  - Login & Auth: Login DTOs, `AuthenticationService`, credential verification via BCrypt, account status enforcement (`PENDING`, `SUSPENDED`, `REJECTED` rejected), JWT generation via `JwtService`, `JwtAuthenticationFilter`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`.
+  - Secure Admin Bootstrap: Command-line runner (`AdminBootstrapRunner` requiring `--app.bootstrap-admin=true`), `AdminBootstrapService` with mandatory single-admin safety check, email collision prevention, no password logging, and BCrypt encoding.
+  - Security Reconciliation: SHA-256 verification token hashing, invalidation of all prior active tokens upon resend, and centralized append-only `AuditLog` infrastructure recording `USER_REGISTERED`, `EMAIL_VERIFIED`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, and `ADMIN_BOOTSTRAPPED`.
+  - Admin APIs: Protected `/api/admin/overview`, `/api/admin/pending-users`, `/api/admin/users` requiring `hasRole('ADMIN')`.
+- **Frontend:** Interactive login page with role-based redirection, `AuthContext` with JWT persistence, `AdminRoute` security guard, `AdminDashboardPage` console with live metrics and approval queue preview, and authenticated `Navbar` session controls.
+- **Acceptance:** Initial administrator provisioned and authenticated; active users log in; unverified/pending accounts rejected; ordinary users denied admin access; 53 automated tests passing.
 
 #### Commit 8 — Google OAuth 2.0 Without OIDC
 - **Backend:** State validation, callback processing, identity verification via Google UserInfo API (no OIDC), safe account linking.

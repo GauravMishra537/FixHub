@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.bootstrap.impl;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.bootstrap.AdminBootstrapService;
 import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.entity.Role;
@@ -22,6 +23,7 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     @Value("${app.bootstrap-admin.email:}")
     private String configuredEmail;
@@ -32,9 +34,14 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
     @Value("${app.bootstrap-admin.name:FixHub Administrator}")
     private String configuredName;
 
-    public AdminBootstrapServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AdminBootstrapServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            AuditService auditService
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     @Override
@@ -95,7 +102,9 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
         admin.setDepartment("System Administration");
         admin.setDesignation("Administrator");
 
-        userRepository.save(admin);
+        User savedAdmin = userRepository.save(admin);
+        auditService.logEvent("ADMIN_BOOTSTRAPPED", savedAdmin.getId(), savedAdmin.getEmail(), "Initial administrator provisioned");
+
         logger.info("[Admin Bootstrap] Initial administrator account provisioned successfully for: {}", normalizedEmail);
         return true;
     }

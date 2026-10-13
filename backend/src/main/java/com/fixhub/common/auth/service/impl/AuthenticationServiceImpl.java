@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.service.impl;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.dto.LoginRequestDto;
 import com.fixhub.common.auth.dto.LoginResponseDto;
 import com.fixhub.common.auth.security.JwtService;
@@ -24,27 +25,35 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuditService auditService;
 
     public AuthenticationServiceImpl(
             UserRepository userRepository,
             UserMapper userMapper,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            AuditService auditService
     ) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.auditService = auditService;
     }
 
     @Override
+    @Transactional
     public LoginResponseDto login(LoginRequestDto requestDto) {
         String normalizedEmail = requestDto.getEmail().trim().toLowerCase();
 
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    auditService.logEvent("LOGIN_FAILED", null, normalizedEmail, "Failed login attempt (email not found)");
+                    return new UnauthorizedException("Invalid email or password");
+                });
 
         if (!passwordEncoder.matches(requestDto.getPassword(), user.getPasswordHash())) {
+            auditService.logEvent("LOGIN_FAILED", user.getId(), user.getEmail(), "Failed login attempt (incorrect password)");
             throw new UnauthorizedException("Invalid email or password");
         }
 
@@ -66,6 +75,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         String token = jwtService.generateToken(user);
         UserResponseDto userDto = userMapper.toDto(user);
+
+        auditService.logEvent("LOGIN_SUCCESS", user.getId(), user.getEmail(), "User logged in successfully");
 
         return new LoginResponseDto(token, userDto);
     }

@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.service;
 
+import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.dto.LoginRequestDto;
 import com.fixhub.common.auth.dto.LoginResponseDto;
 import com.fixhub.common.auth.security.JwtService;
@@ -22,7 +23,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
@@ -36,6 +38,9 @@ class AuthenticationServiceTest {
     @Mock
     private JwtService jwtService;
 
+    @Mock
+    private AuditService auditService;
+
     private UserMapper userMapper;
     private AuthenticationServiceImpl authenticationService;
 
@@ -46,7 +51,8 @@ class AuthenticationServiceTest {
                 userRepository,
                 userMapper,
                 passwordEncoder,
-                jwtService
+                jwtService,
+                auditService
         );
     }
 
@@ -78,6 +84,7 @@ class AuthenticationServiceTest {
         assertEquals("Bearer", response.getTokenType());
         assertEquals("admin@fixhub.com", response.getUser().getEmail());
         assertEquals(Role.ADMIN, response.getUser().getRole());
+        verify(auditService).logEvent(eq("LOGIN_SUCCESS"), eq(1L), eq("admin@fixhub.com"), anyString());
     }
 
     @Test
@@ -89,6 +96,7 @@ class AuthenticationServiceTest {
         assertThrows(UnauthorizedException.class, () ->
                 authenticationService.login(new LoginRequestDto("admin@fixhub.com", "WrongPass"))
         );
+        verify(auditService).logEvent(eq("LOGIN_FAILED"), eq(1L), eq("admin@fixhub.com"), anyString());
     }
 
     @Test
@@ -98,6 +106,7 @@ class AuthenticationServiceTest {
         assertThrows(UnauthorizedException.class, () ->
                 authenticationService.login(new LoginRequestDto("nonexistent@fixhub.com", "SomePass123!"))
         );
+        verify(auditService).logEvent(eq("LOGIN_FAILED"), isNull(), eq("nonexistent@fixhub.com"), anyString());
     }
 
     @Test
