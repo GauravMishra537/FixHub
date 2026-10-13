@@ -1,5 +1,10 @@
 # Environment
 .env
+**/application-local.yml
+**/application-local.properties
+*-local.yml
+*-local.yaml
+*-local.properties
 
 # Java / Maven
 backend/target/

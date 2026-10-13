@@ -1,8 +1,12 @@
 package com.fixhub.common.auth.controller;
 
+import com.fixhub.common.auth.dto.LoginRequestDto;
+import com.fixhub.common.auth.dto.LoginResponseDto;
 import com.fixhub.common.auth.dto.RegisterRequestDto;
+import com.fixhub.common.auth.service.AuthenticationService;
 import com.fixhub.common.auth.service.RegistrationService;
 import com.fixhub.common.exception.GlobalExceptionHandler;
+import com.fixhub.common.exception.UnauthorizedException;
 import com.fixhub.user.dto.UserResponseDto;
 import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.entity.Role;
@@ -33,9 +37,12 @@ class AuthControllerTest {
     @Mock
     private RegistrationService registrationService;
 
+    @Mock
+    private AuthenticationService authenticationService;
+
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(registrationService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(registrationService, authenticationService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -61,7 +68,7 @@ class AuthControllerTest {
                 {
                     "fullName": "Alex Hunter",
                     "email": "alex@example.com",
-                    "password": "SecurePassword123!"
+                    "password": "Password123!"
                 }
                 """;
 
@@ -70,9 +77,8 @@ class AuthControllerTest {
                         .content(payload))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Registration successful. Please check your email to verify your account."))
                 .andExpect(jsonPath("$.data.email").value("alex@example.com"))
-                .andExpect(jsonPath("$.data.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.fullName").value("Alex Hunter"));
     }
 
     @Test
@@ -80,8 +86,8 @@ class AuthControllerTest {
         String payload = """
                 {
                     "fullName": "Alex Hunter",
-                    "email": "invalid-email-format",
-                    "password": "SecurePassword123!"
+                    "email": "invalid-email",
+                    "password": "Password123!"
                 }
                 """;
 
@@ -93,19 +99,56 @@ class AuthControllerTest {
     }
 
     @Test
-    void register_ShortPassword_ReturnsBadRequest() throws Exception {
+    void login_ValidCredentials_ReturnsOk() throws Exception {
+        UserResponseDto userDto = new UserResponseDto(
+                1L,
+                "admin@fixhub.com",
+                "Admin User",
+                Role.ADMIN,
+                AccountStatus.ACTIVE,
+                "IT",
+                "Administrator",
+                null,
+                Instant.now(),
+                Instant.now()
+        );
+        LoginResponseDto loginResponse = new LoginResponseDto("mock-jwt-token", userDto);
+
+        when(authenticationService.login(any(LoginRequestDto.class))).thenReturn(loginResponse);
+
         String payload = """
                 {
-                    "fullName": "Alex Hunter",
-                    "email": "alex@example.com",
-                    "password": "short"
+                    "email": "admin@fixhub.com",
+                    "password": "AdminPassword123!"
                 }
                 """;
 
-        mockMvc.perform(post("/api/auth/register")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("mock-jwt-token"))
+                .andExpect(jsonPath("$.data.user.email").value("admin@fixhub.com"))
+                .andExpect(jsonPath("$.data.user.role").value("ADMIN"));
+    }
+
+    @Test
+    void login_InvalidCredentials_ReturnsUnauthorized() throws Exception {
+        when(authenticationService.login(any(LoginRequestDto.class)))
+                .thenThrow(new UnauthorizedException("Invalid email or password"));
+
+        String payload = """
+                {
+                    "email": "admin@fixhub.com",
+                    "password": "wrong-password"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false));
     }
 
