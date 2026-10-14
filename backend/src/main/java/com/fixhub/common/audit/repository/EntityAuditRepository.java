@@ -9,5 +9,4 @@ import java.util.Optional;
 @Repository
 public interface EntityAuditRepository extends JpaRepository<EntityAudit, Long> {
 
-    Optional<EntityAudit> findByEntityTypeAndEntityId(String entityType, Long entityId);
 }

@@ -1,18 +1,20 @@
 package com.fixhub.user.entity;
 
+import com.fixhub.common.audit.entity.EntityAudit;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.Instant;
 
 @Entity
 @Table(
@@ -32,7 +34,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 120)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(name = "full_name", nullable = false, length = 100)
@@ -58,13 +60,9 @@ public class User {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "audit_id", nullable = false, unique = true, updatable = false)
+    private EntityAudit audit;
 
     public User() {
     }
@@ -75,6 +73,13 @@ public class User {
         this.fullName = fullName;
         this.role = role != null ? role : Role.USER;
         this.status = status != null ? status : AccountStatus.PENDING;
+    }
+
+    @PrePersist
+    private void createAudit() {
+        if (audit == null) {
+            audit = new EntityAudit();
+        }
     }
 
     public Long getId() {
@@ -157,19 +162,11 @@ public class User {
         this.emailVerified = emailVerified;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public EntityAudit getAudit() {
+        return audit;
     }
 
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setAudit(EntityAudit audit) {
+        this.audit = audit;
     }
 }

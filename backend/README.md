@@ -1,6 +1,6 @@
 # FixHub Backend
 
-Spring Boot 3.x application with Java 17.
+Spring Boot 4.x application with Java 23.
 
 ## Setup
 

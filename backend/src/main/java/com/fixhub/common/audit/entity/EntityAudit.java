@@ -1,11 +1,14 @@
 package com.fixhub.common.audit.entity;
 
+import com.fixhub.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -13,23 +16,12 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.Instant;
 
 @Entity
-@Table(
-        name = "entity_audit",
-        indexes = {
-                @Index(name = "idx_entity_audit_lookup", columnList = "entity_type, entity_id")
-        }
-)
+@Table(name = "entity_audit")
 public class EntityAudit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "entity_type", nullable = false, length = 50)
-    private String entityType;
-
-    @Column(name = "entity_id", nullable = false)
-    private Long entityId;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -39,51 +31,48 @@ public class EntityAudit {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "expired_at")
+    private Instant expiredAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deleted_by")
+    private User deletedBy;
+
     public EntityAudit() {
     }
 
-    public EntityAudit(String entityType, Long entityId) {
-        this.entityType = entityType;
-        this.entityId = entityId;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getEntityType() {
-        return entityType;
-    }
+    public Instant getExpiredAt() { return expiredAt; }
+    public void setExpiredAt(Instant expiredAt) { this.expiredAt = expiredAt; }
 
-    public void setEntityType(String entityType) {
-        this.entityType = entityType;
-    }
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
 
-    public Long getEntityId() {
-        return entityId;
-    }
+    public User getCreatedBy() { return createdBy; }
+    public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
 
-    public void setEntityId(Long entityId) {
-        this.entityId = entityId;
-    }
+    public User getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(User updatedBy) { this.updatedBy = updatedBy; }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public User getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(User deletedBy) { this.deletedBy = deletedBy; }
 }
