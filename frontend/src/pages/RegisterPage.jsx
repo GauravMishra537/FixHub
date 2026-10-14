@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register, resendVerification } from '../api/auth'
 import {
@@ -33,6 +33,19 @@ export function RegisterPage() {
   const [registeredEmail, setRegisteredEmail] = useState(null)
   const [resendStatus, setResendStatus] = useState(null)
   const [manualToken, setManualToken] = useState('')
+
+  useEffect(() => {
+  if (!registeredEmail) return
+
+  const onStorage = (e) => {
+    if (e.key === 'fixhub_email_verified') {
+      navigate('/login', { replace: true, state: { verified: true } })
+    }
+  }
+
+  window.addEventListener('storage', onStorage)
+  return () => window.removeEventListener('storage', onStorage)
+   }, [registeredEmail, navigate])
 
   const handleChange = (e) => {
     const { name, value } = e.target

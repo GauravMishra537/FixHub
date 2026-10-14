@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LogIn, ArrowRight, AlertCircle, Loader2 } from 'lucide-react'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const location = useLocation()
+  const justVerified = Boolean(location.state?.verified)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -43,6 +45,12 @@ export function LoginPage() {
             Access your office requests, bookings, and administrator tools
           </p>
         </div>
+
+        {justVerified && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6">
+          Email verified. An administrator will review your account. You can sign in once it is approved.
+        </div>
+        )}
 
         {error && (
           <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 mb-6 flex items-start space-x-2">

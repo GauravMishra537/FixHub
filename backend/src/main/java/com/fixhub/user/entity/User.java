@@ -1,5 +1,7 @@
 package com.fixhub.user.entity;
 
+import java.time.Instant;
+
 import com.fixhub.common.audit.entity.EntityAudit;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -15,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+
 
 @Entity
 @Table(
@@ -60,6 +63,12 @@ public class User {
 
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
+
+    @Column(name = "rejection_reason", length = 255)
+    private String rejectionReason;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 
     @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "audit_id", nullable = false, unique = true, updatable = false)
@@ -162,6 +171,11 @@ public class User {
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
     }
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 
     public EntityAudit getAudit() {
         return audit;

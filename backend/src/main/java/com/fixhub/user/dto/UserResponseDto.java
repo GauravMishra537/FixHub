@@ -18,6 +18,8 @@ public class UserResponseDto {
     private boolean emailVerified;
     private Instant createdAt;
     private Instant updatedAt;
+    private String rejectionReason;
+    private Instant lastLoginAt;
 
     public UserResponseDto() {
     }
@@ -124,4 +126,10 @@ public class UserResponseDto {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+    public String getRejectionReason() { return rejectionReason; }
+
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 }

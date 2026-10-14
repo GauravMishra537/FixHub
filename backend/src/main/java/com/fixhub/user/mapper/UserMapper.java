@@ -27,6 +27,8 @@ public class UserMapper {
         dto.setEmailVerified(user.isEmailVerified());
         dto.setCreatedAt(user.getAudit().getCreatedAt());
         dto.setUpdatedAt(user.getAudit().getUpdatedAt());
+        dto.setRejectionReason(user.getRejectionReason());
+        dto.setLastLoginAt(user.getLastLoginAt());
         return dto;
     }
 

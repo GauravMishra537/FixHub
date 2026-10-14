@@ -36,6 +36,11 @@ export function VerifyEmailPage() {
     try {
       await verifyEmail(tokenToVerify.trim())
       setSuccess(true)
+      try {
+    localStorage.setItem('fixhub_email_verified', String(Date.now()))
+     } catch {
+     // storage blocked, ignore
+     }
     } catch (err) {
       setError(err.message || 'Verification failed. The token may be invalid or expired.')
     } finally {
@@ -108,10 +113,10 @@ export function VerifyEmailPage() {
             </div>
 
             <Link
-              to="/"
+              to="/login"
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
             >
-              Return to Home <ArrowRight className="w-4 h-4 ml-1.5" />
+              Go to Login <ArrowRight className="w-4 h-4 ml-1.5" />
             </Link>
           </div>
         ) : (

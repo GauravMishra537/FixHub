@@ -71,9 +71,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         if (user.getStatus() == AccountStatus.REJECTED) {
-            throw new BadRequestException("Your account request was rejected. Please contact your system administrator.");
+            String reason = user.getRejectionReason();
+            throw new BadRequestException("Your registration was rejected."
+            + (reason != null && !reason.isBlank() ? " Reason: " + reason : ""));
         }
 
+        user.setLastLoginAt(java.time.Instant.now());
         String token = jwtService.generateToken(user);
         UserResponseDto userDto = userMapper.toDto(user);
 
