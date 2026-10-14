@@ -52,7 +52,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     return new UnauthorizedException("Invalid email or password");
                 });
 
-        if (!passwordEncoder.matches(requestDto.getPassword(), user.getPasswordHash())) {
+        if (user.getPasswordHash() == null
+            || !passwordEncoder.matches(requestDto.getPassword(), user.getPasswordHash())) {
             auditService.logEvent("LOGIN_FAILED", user.getId(), user.getEmail(), "Failed login attempt (incorrect password)");
             throw new UnauthorizedException("Invalid email or password");
         }

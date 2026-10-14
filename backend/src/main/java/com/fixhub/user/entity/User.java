@@ -25,6 +25,7 @@ import jakarta.persistence.Table;
                 @Index(name = "idx_users_role", columnList = "role")
         }
 )
+
 public class User {
 
     @Id
@@ -60,7 +61,7 @@ public class User {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name = "audit_id", nullable = false, unique = true, updatable = false)
     private EntityAudit audit;
 

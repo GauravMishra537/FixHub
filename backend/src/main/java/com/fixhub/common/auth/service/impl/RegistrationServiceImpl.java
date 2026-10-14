@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 @Transactional
@@ -35,6 +36,8 @@ public class RegistrationServiceImpl implements RegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuditService auditService;
+    @Value("${app.auth.verification-token-expiry-hours:24}")
+    private long tokenExpiryHours;
 
     public RegistrationServiceImpl(
             UserRepository userRepository,
@@ -74,7 +77,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 
         String rawToken = UUID.randomUUID().toString();
         String tokenHash = hashToken(rawToken);
-        Instant expiryDate = Instant.now().plus(24, ChronoUnit.HOURS);
+        Instant expiryDate = Instant.now().plus(tokenExpiryHours, ChronoUnit.HOURS);
         VerificationToken verificationToken = new VerificationToken(tokenHash, savedUser, expiryDate);
         verificationTokenRepository.save(verificationToken);
 
@@ -93,9 +96,12 @@ public class RegistrationServiceImpl implements RegistrationService {
         String raw = token.trim();
         String tokenHash = hashToken(raw);
 
-        VerificationToken verificationToken = verificationTokenRepository.findByToken(tokenHash)
-                .or(() -> verificationTokenRepository.findByToken(raw))
-                .orElseThrow(() -> new BadRequestException("Invalid or expired verification token"));
+         VerificationToken verificationToken = verificationTokenRepository.findByToken(tokenHash)
+        .orElseThrow(() -> new BadRequestException("Invalid or expired  verification token"));
+
+        if (verificationToken.getUser().isEmailVerified()) {
+            return;
+        }
 
         if (verificationToken.isUsed()) {
             throw new BadRequestException("Verification token has already been used");
@@ -115,34 +121,25 @@ public class RegistrationServiceImpl implements RegistrationService {
         auditService.logEvent("EMAIL_VERIFIED", user.getId(), user.getEmail(), "User email verified");
     }
 
-    @Override
-    public void resendVerification(String email) {
-        if (email == null || email.isBlank()) {
-            throw new BadRequestException("Email is required");
-        }
-
-        String normalizedEmail = email.trim().toLowerCase();
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new BadRequestException("No account found with email: " + normalizedEmail));
-
-        if (user.isEmailVerified()) {
-            throw new BadRequestException("Email is already verified");
-        }
-
-        List<VerificationToken> existingTokens = verificationTokenRepository.findAllByUserAndUsedFalse(user);
-        for (VerificationToken existingToken : existingTokens) {
-            existingToken.setUsed(true);
-        }
-        verificationTokenRepository.saveAll(existingTokens);
-
-        String rawToken = UUID.randomUUID().toString();
-        String tokenHash = hashToken(rawToken);
-        Instant expiryDate = Instant.now().plus(24, ChronoUnit.HOURS);
-        VerificationToken verificationToken = new VerificationToken(tokenHash, user, expiryDate);
-        verificationTokenRepository.save(verificationToken);
-
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), rawToken);
+@Override
+public void resendVerification(String email) {
+    if (email == null || email.isBlank()) {
+        throw new BadRequestException("Email is required");
     }
+
+    userRepository.findByEmail(email.trim().toLowerCase())
+            .filter(user -> !user.isEmailVerified())
+            .ifPresent(user -> {
+                verificationTokenRepository.findAllByUserAndUsedFalse(user)
+                        .forEach(t -> t.setUsed(true));
+
+                String rawToken = UUID.randomUUID().toString();
+                Instant expiryDate = Instant.now().plus(tokenExpiryHours, ChronoUnit.HOURS);
+                verificationTokenRepository.save(new VerificationToken(hashToken(rawToken), user, expiryDate));
+
+                emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), rawToken);
+            });
+}
 
     private String hashToken(String rawToken) {
         try {
