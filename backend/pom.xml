@@ -117,16 +117,23 @@
         </dependency>
     </dependencies>
 
-    <build>
+     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <!-- Spring Boot's parent handles version management, but we enforce configuration rules here -->
                 <configuration>
+                    <!-- 1. Enable preview features required by Java 23 for processing newer constructor configurations -->
+                    <compilerArgs>
+                        <arg>--enable-preview</arg>
+                    </compilerArgs>
+                    <!-- 2. Explicitly bind a version to Lombok in the compiler path to patch preview conflicts -->
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -137,4 +144,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
