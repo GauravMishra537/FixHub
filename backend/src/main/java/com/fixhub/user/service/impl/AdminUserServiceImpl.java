@@ -106,8 +106,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (target.getId().equals(actorId)) {
             throw new BadRequestException("You cannot delete your own account");
         }
-        if (target.getRole() == Role.ADMIN && userRepository.countByRole(Role.ADMIN) <= 1) {
-            throw new BadRequestException("Cannot delete the last administrator");
+        if (target.getRole() == Role.ADMIN) {
+        throw new BadRequestException("Administrators cannot be deleted");
         }
 
         target.softDelete(actorId);

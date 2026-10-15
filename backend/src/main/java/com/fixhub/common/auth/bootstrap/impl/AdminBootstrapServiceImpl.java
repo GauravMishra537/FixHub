@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.bootstrap.impl;
-
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.bootstrap.AdminBootstrapService;
 import com.fixhub.user.entity.Role;
@@ -26,6 +27,9 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Value("${app.bootstrap-admin.email:}")
     private String configuredEmail;
@@ -121,6 +125,10 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
 
         admin.setDepartment("System Administration");
         admin.setDesignation("Administrator");
+
+        // Lets this transaction insert an ADMIN row past the DB trigger (flag dies at commit)
+        entityManager.createNativeQuery("select set_config('app.allow_admin_write', 'on', true)")
+        .getSingleResult();
 
         User savedAdmin = userRepository.save(admin);
 
