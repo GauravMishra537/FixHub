@@ -1,5 +1,6 @@
 package com.fixhub.common.auth.entity;
 
+import com.fixhub.common.entity.AuditEntity;
 import com.fixhub.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +12,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
@@ -23,7 +23,7 @@ import java.time.Instant;
                 @Index(name = "idx_verification_user", columnList = "user_id")
         }
 )
-public class VerificationToken {
+public class VerificationToken extends AuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,10 +41,6 @@ public class VerificationToken {
 
     @Column(nullable = false)
     private boolean used = false;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
 
     public VerificationToken() {
     }
@@ -94,13 +90,5 @@ public class VerificationToken {
 
     public void setUsed(boolean used) {
         this.used = used;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 }

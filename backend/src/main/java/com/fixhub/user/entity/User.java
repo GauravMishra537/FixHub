@@ -1,23 +1,19 @@
 package com.fixhub.user.entity;
 
-import java.time.Instant;
-
-import com.fixhub.common.audit.entity.EntityAudit;
-import jakarta.persistence.CascadeType;
+import com.fixhub.common.entity.AuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -28,14 +24,15 @@ import jakarta.persistence.Table;
                 @Index(name = "idx_users_role", columnList = "role")
         }
 )
-
-public class User {
+@SQLDelete(sql = "UPDATE users SET deleted_on = now(), updated_on = now() WHERE id = ?")
+@SQLRestriction("deleted_on IS NULL")
+public class User extends AuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 120)
+    @Column(nullable = false, length = 120)
     private String email;
 
     @Column(name = "password_hash")
@@ -70,10 +67,6 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name = "audit_id", nullable = false, unique = true, updatable = false)
-    private EntityAudit audit;
-
     public User() {
     }
 
@@ -83,13 +76,6 @@ public class User {
         this.fullName = fullName;
         this.role = role != null ? role : Role.USER;
         this.status = status != null ? status : AccountStatus.PENDING;
-    }
-
-    @PrePersist
-    private void createAudit() {
-        if (audit == null) {
-            audit = new EntityAudit();
-        }
     }
 
     public Long getId() {
@@ -171,17 +157,20 @@ public class User {
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
     }
-    public String getRejectionReason() { return rejectionReason; }
-    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
 
-    public Instant getLastLoginAt() { return lastLoginAt; }
-    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
-
-    public EntityAudit getAudit() {
-        return audit;
+    public String getRejectionReason() {
+        return rejectionReason;
     }
 
-    public void setAudit(EntityAudit audit) {
-        this.audit = audit;
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 }

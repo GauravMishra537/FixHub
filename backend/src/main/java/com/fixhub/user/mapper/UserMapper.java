@@ -25,8 +25,8 @@ public class UserMapper {
         dto.setDesignation(user.getDesignation());
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setEmailVerified(user.isEmailVerified());
-        dto.setCreatedAt(user.getAudit().getCreatedAt());
-        dto.setUpdatedAt(user.getAudit().getUpdatedAt());
+        dto.setCreatedAt(user.getCreatedOn());
+        dto.setUpdatedAt(user.getUpdatedOn());
         dto.setRejectionReason(user.getRejectionReason());
         dto.setLastLoginAt(user.getLastLoginAt());
         return dto;

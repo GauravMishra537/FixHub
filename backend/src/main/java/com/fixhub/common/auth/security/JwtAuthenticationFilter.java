@@ -50,7 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .filter(user -> user.getStatus() == AccountStatus.ACTIVE)
                     .ifPresent(user -> {
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                user.getEmail(),
+                                new AuthUser(user.getId(), user.getEmail()),
                                 null,
                                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
                         );

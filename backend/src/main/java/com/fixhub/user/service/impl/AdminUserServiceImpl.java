@@ -119,7 +119,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     private UserResponseDto finish(User target, User actor, String event, String description) {
-        target.getAudit().setUpdatedBy(actor);
         User saved = userRepository.save(target);
         auditService.logEvent(event, saved.getId(), saved.getEmail(), description);
         return userMapper.toDto(saved);
