@@ -1,6 +1,5 @@
 package com.fixhub.common.auth.security;
 
-import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -46,8 +45,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String email = jwtService.extractEmail(token);
 
+            // A soft-deleted user is hidden by @SQLRestriction, so findByEmail returns empty
+            // and the request stays unauthenticated (401).
             userRepository.findByEmail(email)
-                    .filter(user -> user.getStatus() == AccountStatus.ACTIVE)
                     .ifPresent(user -> {
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                 new AuthUser(user.getId(), user.getEmail()),

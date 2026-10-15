@@ -20,7 +20,6 @@ import java.time.Instant;
         name = "users",
         indexes = {
                 @Index(name = "idx_users_email", columnList = "email"),
-                @Index(name = "idx_users_status", columnList = "status"),
                 @Index(name = "idx_users_role", columnList = "role")
         }
 )
@@ -45,10 +44,6 @@ public class User extends AuditEntity {
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private AccountStatus status = AccountStatus.PENDING;
-
     @Column(length = 100)
     private String department;
 
@@ -58,119 +53,43 @@ public class User extends AuditEntity {
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
-    @Column(name = "email_verified", nullable = false)
-    private boolean emailVerified = false;
-
-    @Column(name = "rejection_reason", length = 255)
-    private String rejectionReason;
-
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
     public User() {
     }
 
-    public User(String email, String passwordHash, String fullName, Role role, AccountStatus status) {
+    public User(String email, String passwordHash, String fullName, Role role) {
         this.email = email;
         this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.role = role != null ? role : Role.USER;
-        this.status = status != null ? status : AccountStatus.PENDING;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
-    public String getPasswordHash() {
-        return passwordHash;
-    }
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
 
-    public String getFullName() {
-        return fullName;
-    }
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public AccountStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(AccountStatus status) {
-        this.status = status;
-    }
-
-    public String getDepartment() {
-        return department;
-    }
-
-    public void setDepartment(String department) {
-        this.department = department;
-    }
-
-    public String getDesignation() {
-        return designation;
-    }
-
-    public void setDesignation(String designation) {
-        this.designation = designation;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public boolean isEmailVerified() {
-        return emailVerified;
-    }
-
-    public void setEmailVerified(boolean emailVerified) {
-        this.emailVerified = emailVerified;
-    }
-
-    public String getRejectionReason() {
-        return rejectionReason;
-    }
-
-    public void setRejectionReason(String rejectionReason) {
-        this.rejectionReason = rejectionReason;
-    }
-
-    public Instant getLastLoginAt() {
-        return lastLoginAt;
-    }
-
-    public void setLastLoginAt(Instant lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
+    public Instant getLastLoginAt() { return lastLoginAt; }
+    public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
 }

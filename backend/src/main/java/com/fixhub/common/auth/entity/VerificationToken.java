@@ -1,7 +1,6 @@
 package com.fixhub.common.auth.entity;
 
 import com.fixhub.common.entity.AuditEntity;
-import com.fixhub.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -20,7 +19,7 @@ import java.time.Instant;
         name = "verification_tokens",
         indexes = {
                 @Index(name = "idx_verification_token", columnList = "token"),
-                @Index(name = "idx_verification_user", columnList = "user_id")
+                @Index(name = "idx_verification_request", columnList = "registration_request_id")
         }
 )
 public class VerificationToken extends AuditEntity {
@@ -33,8 +32,8 @@ public class VerificationToken extends AuditEntity {
     private String token;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "registration_request_id", nullable = false)
+    private RegistrationRequest registrationRequest;
 
     @Column(name = "expiry_date", nullable = false)
     private Instant expiryDate;
@@ -45,50 +44,25 @@ public class VerificationToken extends AuditEntity {
     public VerificationToken() {
     }
 
-    public VerificationToken(String token, User user, Instant expiryDate) {
+    public VerificationToken(String token, RegistrationRequest registrationRequest, Instant expiryDate) {
         this.token = token;
-        this.user = user;
+        this.registrationRequest = registrationRequest;
         this.expiryDate = expiryDate;
         this.used = false;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
 
-    public String getToken() {
-        return token;
-    }
+    public RegistrationRequest getRegistrationRequest() { return registrationRequest; }
+    public void setRegistrationRequest(RegistrationRequest registrationRequest) { this.registrationRequest = registrationRequest; }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
+    public Instant getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
 
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public Instant getExpiryDate() {
-        return expiryDate;
-    }
-
-    public void setExpiryDate(Instant expiryDate) {
-        this.expiryDate = expiryDate;
-    }
-
-    public boolean isUsed() {
-        return used;
-    }
-
-    public void setUsed(boolean used) {
-        this.used = used;
-    }
+    public boolean isUsed() { return used; }
+    public void setUsed(boolean used) { this.used = used; }
 }

@@ -1,33 +1,18 @@
-import { apiClient } from './client'
+import { apiClient } from './client';
 
-export async function getAdminOverview() {
-  return apiClient('/admin/overview')
-}
+export const getRequests = (status) =>
+  apiClient(status ? `/admin/requests?status=${status}` : '/admin/requests');
 
-export async function getPendingUsers() {
-  return apiClient('/admin/pending-users')
-}
+export const getUsers = () => apiClient('/admin/users');
 
-export async function getAllUsers(status) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : ''
-  return apiClient(`/admin/users${query}`)
-}
+export const approveRequest = (id) =>
+  apiClient(`/admin/requests/${id}/approve`, { method: 'PUT' });
 
-export async function approveUser(id) {
-  return apiClient(`/admin/users/${id}/approve`, { method: 'PUT' })
-}
-
-export async function rejectUser(id, reason) {
-  return apiClient(`/admin/users/${id}/reject`, {
+export const rejectRequest = (id, reason) =>
+  apiClient(`/admin/requests/${id}/reject`, {
     method: 'PUT',
     body: JSON.stringify({ reason }),
-  })
-}
+  });
 
-export async function suspendUser(id) {
-  return apiClient(`/admin/users/${id}/suspend`, { method: 'PUT' })
-}
-
-export async function restoreUser(id) {
-  return apiClient(`/admin/users/${id}/restore`, { method: 'PUT' })
-}
+export const deleteUser = (id) =>
+  apiClient(`/admin/users/${id}`, { method: 'DELETE' });

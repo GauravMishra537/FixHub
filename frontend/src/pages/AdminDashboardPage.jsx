@@ -1,385 +1,302 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Clock, Loader2, ShieldCheck, Trash2, Users, XCircle } from 'lucide-react';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 import {
-  getAdminOverview,
-  getAllUsers,
-  approveUser,
-  rejectUser,
-  suspendUser,
-  restoreUser,
-} from '../api/admin'
-import ConfirmDialog from '../components/common/ConfirmDialog'
-import {
-  ShieldCheck,
-  Users,
-  Clock,
-  CheckCircle2,
-  UserCheck,
-  AlertTriangle,
-  Loader2,
-} from 'lucide-react'
+  approveRequest,
+  deleteUser,
+  getRequests,
+  getUsers,
+  rejectRequest,
+} from '../api/admin';
 
-const TABS = [
-  { key: 'PENDING', label: 'Pending' },
-  { key: 'ACTIVE', label: 'Active' },
-  { key: 'REJECTED', label: 'Rejected' },
-  { key: 'SUSPENDED', label: 'Suspended' },
-  { key: 'ALL', label: 'All' },
-]
+const TABS = {
+  PENDING: 'PENDING',
+  REJECTED: 'REJECTED',
+  ACTIVE: 'ACTIVE',
+};
 
-const STATUS_STYLES = {
-  PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
-  ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  REJECTED: 'bg-red-50 text-red-700 border-red-200',
-  SUSPENDED: 'bg-slate-100 text-slate-700 border-slate-300',
-}
+const formatDate = (value) => (value ? new Date(value).toLocaleString() : '-');
 
-const ACTION_TEXT = {
-  approve: {
-    title: 'Approve account',
-    confirm: 'Approve',
-    message: (u) => `Approve ${u.fullName} (${u.email})? They will be able to sign in.`,
-    done: 'User approved.',
-  },
-  reject: {
-    title: 'Reject account',
-    confirm: 'Reject',
-    message: (u) => `Reject ${u.fullName} (${u.email})? Give a reason. The user will see it.`,
-    done: 'User rejected.',
-  },
-  suspend: {
-    title: 'Suspend account',
-    confirm: 'Suspend',
-    message: (u) => `Suspend ${u.fullName} (${u.email})? They will lose access immediately.`,
-    done: 'User suspended.',
-  },
-  restore: {
-    title: 'Restore account',
-    confirm: 'Restore',
-    message: (u) => `Restore ${u.fullName} (${u.email})? They will be able to sign in again.`,
-    done: 'User restored.',
-  },
-}
+export default function AdminDashboardPage() {
+  const { user: me } = useAuth();
 
-function formatDate(value) {
-  if (!value) return '—'
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString()
-}
+  const [tab, setTab] = useState(TABS.PENDING);
+  const [requests, setRequests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
-export function AdminDashboardPage() {
-  const { user: currentUser } = useAuth()
-
-  const [tab, setTab] = useState('PENDING')
-  const [overview, setOverview] = useState(null)
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [notice, setNotice] = useState(null)
-
-  const [dialog, setDialog] = useState(null) // { action, target }
-  const [reason, setReason] = useState('')
-  const [acting, setActing] = useState(false)
-  const [dialogError, setDialogError] = useState(null)
+  const [dialog, setDialog] = useState(null); // { type, target }
+  const [reason, setReason] = useState('');
+  const [acting, setActing] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError('');
     try {
-      const [overviewData, usersData] = await Promise.all([
-        getAdminOverview(),
-        getAllUsers(tab === 'ALL' ? null : tab),
-      ])
-      setOverview(overviewData)
-      setUsers(usersData || [])
-    } catch (err) {
-      setError(err.message || 'Failed to load administrator data')
+      const [reqs, usrs] = await Promise.all([getRequests(), getUsers()]);
+      setRequests(reqs || []);
+      setUsers(usrs || []);
+    } catch (e) {
+      setError(e.message || 'Failed to load data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [tab])
+  }, []);
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
-  const openDialog = (action, target) => {
-    setDialog({ action, target })
-    setReason('')
-    setDialogError(null)
-    setNotice(null)
-  }
+  const pending = useMemo(
+    () => requests.filter((r) => r.requestStatus === 'PENDING'),
+    [requests]
+  );
+  const rejected = useMemo(
+    () => requests.filter((r) => r.requestStatus === 'REJECTED'),
+    [requests]
+  );
+  const admins = useMemo(() => users.filter((u) => u.role === 'ADMIN'), [users]);
 
   const closeDialog = () => {
-    if (acting) return
-    setDialog(null)
-    setDialogError(null)
-  }
+    if (acting) return;
+    setDialog(null);
+    setReason('');
+  };
 
-  const confirmAction = async () => {
-    if (!dialog) return
-    const { action, target } = dialog
-
-    if (action === 'reject' && !reason.trim()) {
-      setDialogError('A rejection reason is required.')
-      return
-    }
-
-    setActing(true)
-    setDialogError(null)
+  const confirm = async () => {
+    if (!dialog) return;
+    setActing(true);
+    setError('');
+    setNotice('');
     try {
-      if (action === 'approve') await approveUser(target.id)
-      if (action === 'reject') await rejectUser(target.id, reason.trim())
-      if (action === 'suspend') await suspendUser(target.id)
-      if (action === 'restore') await restoreUser(target.id)
-
-      setDialog(null)
-      setNotice({ type: 'success', text: `${ACTION_TEXT[action].done} (${target.email})` })
-      await load()
-    } catch (err) {
-      setDialogError(err.message || 'Action failed. Please try again.')
+      const { type, target } = dialog;
+      if (type === 'approve') {
+        await approveRequest(target.id);
+        setNotice(`${target.email} approved.`);
+      } else if (type === 'reject') {
+        await rejectRequest(target.id, reason.trim());
+        setNotice(`${target.email} rejected.`);
+      } else if (type === 'delete') {
+        await deleteUser(target.id);
+        setNotice(`${target.email} deleted. They must register again.`);
+      }
+      setDialog(null);
+      setReason('');
+      await load();
+    } catch (e) {
+      setError(e.message || 'Action failed');
+      setDialog(null);
+      setReason('');
     } finally {
-      setActing(false)
+      setActing(false);
     }
-  }
+  };
 
-  const renderActions = (u) => {
-    if (u.id === currentUser?.id) {
-      return <span className="text-slate-400">You</span>
+  const dialogProps = () => {
+    if (!dialog) return {};
+    const { type, target } = dialog;
+    if (type === 'approve') {
+      return {
+        title: 'Approve registration',
+        message: `Approve ${target.fullName} (${target.email})? A user account will be created.`,
+        confirmLabel: 'Approve',
+        danger: false,
+      };
     }
-
-    const btn = 'px-2.5 py-1 rounded-md text-xs font-semibold border disabled:opacity-40'
-
-    if (u.status === 'PENDING') {
-      return (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => openDialog('approve', u)}
-            disabled={!u.emailVerified}
-            title={u.emailVerified ? 'Approve this account' : 'Email not verified yet'}
-            className={`${btn} bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700`}
-          >
-            Approve
-          </button>
-          <button
-            type="button"
-            onClick={() => openDialog('reject', u)}
-            className={`${btn} bg-white text-red-700 border-red-300 hover:bg-red-50`}
-          >
-            Reject
-          </button>
-        </div>
-      )
+    if (type === 'reject') {
+      return {
+        title: 'Reject registration',
+        message: `Reject ${target.fullName} (${target.email})? Give a reason.`,
+        confirmLabel: 'Reject',
+        danger: true,
+        confirmDisabled: reason.trim().length === 0,
+      };
     }
+    return {
+      title: 'Delete user',
+      message: `Delete ${target.fullName} (${target.email})? They cannot log in and must register again.`,
+      confirmLabel: 'Delete user',
+      danger: true,
+    };
+  };
 
-    if (u.status === 'ACTIVE') {
-      return (
-        <button
-          type="button"
-          onClick={() => openDialog('suspend', u)}
-          className={`${btn} bg-white text-slate-700 border-slate-300 hover:bg-slate-50`}
-        >
-          Suspend
-        </button>
-      )
-    }
+  const statCards = [
+    { label: 'Pending', value: pending.length, icon: Clock },
+    { label: 'Rejected', value: rejected.length, icon: XCircle },
+    { label: 'Active users', value: users.length, icon: Users },
+    { label: 'Admins', value: admins.length, icon: ShieldCheck },
+  ];
 
-    if (u.status === 'SUSPENDED') {
-      return (
-        <button
-          type="button"
-          onClick={() => openDialog('restore', u)}
-          className={`${btn} bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50`}
-        >
-          Restore
-        </button>
-      )
-    }
+  const tabList = [
+    { key: TABS.PENDING, label: `Pending (${pending.length})` },
+    { key: TABS.REJECTED, label: `Rejected (${rejected.length})` },
+    { key: TABS.ACTIVE, label: `Active (${users.length})` },
+  ];
 
-    return <span className="text-slate-400">—</span>
-  }
+  const renderRequestRows = (rows, isPending) =>
+    rows.map((r) => (
+      <tr key={r.id} className="border-t border-slate-200">
+        <td className="px-4 py-3 font-medium text-slate-900">{r.fullName}</td>
+        <td className="px-4 py-3 text-slate-600">{r.email}</td>
+        <td className="px-4 py-3">
+          {r.emailVerified ? (
+            <span className="text-green-700">Verified</span>
+          ) : (
+            <span className="text-amber-700">Not verified</span>
+          )}
+        </td>
+        <td className="px-4 py-3 text-slate-600">{formatDate(r.createdAt)}</td>
+        {isPending ? (
+          <td className="px-4 py-3">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={!r.emailVerified}
+                title={r.emailVerified ? '' : 'Email not verified yet'}
+                onClick={() => setDialog({ type: 'approve', target: r })}
+                className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => setDialog({ type: 'reject', target: r })}
+                className="inline-flex items-center gap-1 rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+              >
+                <XCircle className="h-4 w-4" /> Reject
+              </button>
+            </div>
+          </td>
+        ) : (
+          <td className="px-4 py-3 text-slate-600">{r.rejectionReason || '-'}</td>
+        )}
+      </tr>
+    ));
 
-  const activeText = dialog ? ACTION_TEXT[dialog.action] : null
+  const renderUserRows = () =>
+    users.map((u) => (
+      <tr key={u.id} className="border-t border-slate-200">
+        <td className="px-4 py-3 font-medium text-slate-900">{u.fullName}</td>
+        <td className="px-4 py-3 text-slate-600">{u.email}</td>
+        <td className="px-4 py-3 text-slate-600">{u.role}</td>
+        <td className="px-4 py-3 text-slate-600">{formatDate(u.lastLoginAt)}</td>
+        <td className="px-4 py-3">
+          {me && u.id === me.id ? (
+            <span className="text-sm text-slate-500">You</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDialog({ type: 'delete', target: u })}
+              className="inline-flex items-center gap-1 rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" /> Delete user
+            </button>
+          )}
+        </td>
+      </tr>
+    ));
+
+  const headers = {
+    [TABS.PENDING]: ['Name', 'Email', 'Email status', 'Requested', 'Actions'],
+    [TABS.REJECTED]: ['Name', 'Email', 'Email status', 'Requested', 'Reason'],
+    [TABS.ACTIVE]: ['Name', 'Email', 'Role', 'Last login', 'Actions'],
+  };
+
+  const rowsCount =
+    tab === TABS.PENDING ? pending.length : tab === TABS.REJECTED ? rejected.length : users.length;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center space-x-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Administrator Mode Active</span>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <h1 className="text-2xl font-semibold text-slate-900">Admin console</h1>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {statCards.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between text-slate-500">
+              <span className="text-sm">{label}</span>
+              <Icon className="h-4 w-4" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Console</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Logged in as <span className="font-semibold text-slate-700">{currentUser?.fullName}</span> (
-              {currentUser?.email})
-            </p>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">{value}</div>
           </div>
-        </div>
+        ))}
       </div>
 
       {notice && (
-        <div
-          role="status"
-          className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center justify-between"
-        >
-          <span>{notice.text}</span>
-          <button type="button" onClick={() => setNotice(null)} className="text-xs underline">
-            Dismiss
-          </button>
+        <div className="mt-4 rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
+          {notice}
         </div>
       )}
-
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
-          <span className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>{error}</span>
-          </span>
-          <button type="button" onClick={load} className="text-xs underline">
-            Retry
-          </button>
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+          {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Accounts</span>
-            <Users className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900">{overview?.totalUsers ?? 0}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Users</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-600">{overview?.activeUsers ?? 0}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Pending Approval</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-amber-600">{overview?.pendingUsers ?? 0}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">System Admins</span>
-            <UserCheck className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-bold text-blue-600">{overview?.adminCount ?? 0}</div>
-        </div>
+      <div className="mt-6 flex gap-2 border-b border-slate-200">
+        {tabList.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium ${
+              tab === t.key
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900 mb-4">User Accounts</h2>
-
-        <div className="flex flex-wrap gap-2 mb-4" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                tab === t.key
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
+      <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-sm text-slate-500">
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Loading users...
+          <div className="flex items-center justify-center gap-2 p-10 text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading...
           </div>
-        ) : users.length === 0 ? (
-          <div className="text-center py-8 text-sm text-slate-500 bg-slate-50 rounded-lg border border-slate-100">
-            No users in this view.
-          </div>
+        ) : rowsCount === 0 ? (
+          <div className="p-10 text-center text-slate-500">Nothing here.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="py-2.5 px-4">Name</th>
-                  <th className="py-2.5 px-4">Email</th>
-                  <th className="py-2.5 px-4">Verified</th>
-                  <th className="py-2.5 px-4">Role</th>
-                  <th className="py-2.5 px-4">Status</th>
-                  <th className="py-2.5 px-4">Last login</th>
-                  <th className="py-2.5 px-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="py-2.5 px-4 font-medium text-slate-900">{u.fullName}</td>
-                    <td className="py-2.5 px-4">{u.email}</td>
-                    <td className="py-2.5 px-4">{u.emailVerified ? 'Yes' : 'No'}</td>
-                    <td className="py-2.5 px-4">{u.role}</td>
-                    <td className="py-2.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs border ${
-                          STATUS_STYLES[u.status] || 'bg-slate-50 text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        {u.status}
-                      </span>
-                      {u.status === 'REJECTED' && u.rejectionReason && (
-                        <div className="mt-1 text-[11px] text-slate-500">{u.rejectionReason}</div>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4">{formatDate(u.lastLoginAt)}</td>
-                    <td className="py-2.5 px-4">{renderActions(u)}</td>
-                  </tr>
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                {headers[tab].map((h) => (
+                  <th key={h} className="px-4 py-3 font-medium">
+                    {h}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {tab === TABS.PENDING && renderRequestRows(pending, true)}
+              {tab === TABS.REJECTED && renderRequestRows(rejected, false)}
+              {tab === TABS.ACTIVE && renderUserRows()}
+            </tbody>
+          </table>
         )}
       </div>
 
       <ConfirmDialog
         open={Boolean(dialog)}
-        title={activeText?.title}
-        message={dialog ? activeText.message(dialog.target) : ''}
-        confirmLabel={activeText?.confirm}
-        danger={dialog?.action === 'reject' || dialog?.action === 'suspend'}
         loading={acting}
-        confirmDisabled={dialog?.action === 'reject' && !reason.trim()}
-        onConfirm={confirmAction}
+        onConfirm={confirm}
         onCancel={closeDialog}
+        {...dialogProps()}
       >
-        {dialog?.action === 'reject' && (
-          <div>
-            <label htmlFor="reject-reason" className="block text-xs font-semibold text-slate-700 mb-1">
-              Reason
-            </label>
-            <textarea
-              id="reject-reason"
-              rows={3}
-              maxLength={255}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Example: Not a company email address"
-            />
-          </div>
+        {dialog?.type === 'reject' && (
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={255}
+            rows={3}
+            placeholder="Reason (required)"
+            className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          />
         )}
-        {dialogError && <p className="mt-3 text-xs text-red-600">{dialogError}</p>}
       </ConfirmDialog>
     </div>
-  )
+  );
 }
-
-export default AdminDashboardPage

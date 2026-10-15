@@ -1,21 +1,20 @@
 package com.fixhub.user.service;
 
+import com.fixhub.common.auth.entity.RequestStatus;
+import com.fixhub.user.dto.RegistrationRequestDto;
 import com.fixhub.user.dto.UserResponseDto;
-import com.fixhub.user.entity.AccountStatus;
 
 import java.util.List;
 
 public interface AdminUserService {
 
-    List<UserResponseDto> listUsers(AccountStatus status);
+    List<RegistrationRequestDto> listRequests(RequestStatus status);
 
-    UserResponseDto getUser(Long id);
+    List<UserResponseDto> listUsers();
 
-    UserResponseDto approve(Long id, String actorEmail);
+    UserResponseDto approve(Long requestId, Long actorId);
 
-    UserResponseDto reject(Long id, String reason, String actorEmail);
+    RegistrationRequestDto reject(Long requestId, String reason, Long actorId);
 
-    UserResponseDto suspend(Long id, String actorEmail);
-
-    UserResponseDto restore(Long id, String actorEmail);
+    void deleteUser(Long userId, Long actorId);
 }

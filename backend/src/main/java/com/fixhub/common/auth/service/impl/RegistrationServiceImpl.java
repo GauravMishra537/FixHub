@@ -2,17 +2,18 @@ package com.fixhub.common.auth.service.impl;
 
 import com.fixhub.common.audit.service.AuditService;
 import com.fixhub.common.auth.dto.RegisterRequestDto;
+import com.fixhub.common.auth.entity.RegistrationRequest;
+import com.fixhub.common.auth.entity.RequestStatus;
 import com.fixhub.common.auth.entity.VerificationToken;
+import com.fixhub.common.auth.repository.RegistrationRequestRepository;
 import com.fixhub.common.auth.repository.VerificationTokenRepository;
 import com.fixhub.common.auth.service.EmailService;
 import com.fixhub.common.auth.service.RegistrationService;
 import com.fixhub.common.exception.BadRequestException;
 import com.fixhub.user.dto.UserResponseDto;
-import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.entity.Role;
-import com.fixhub.user.entity.User;
-import com.fixhub.user.mapper.UserMapper;
 import com.fixhub.user.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,34 +23,32 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
+import java.util.HexFormat;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 
 @Service
 @Transactional
 public class RegistrationServiceImpl implements RegistrationService {
 
+    private final RegistrationRequestRepository requestRepository;
+    private final VerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
-    private final VerificationTokenRepository verificationTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuditService auditService;
+
     @Value("${app.auth.verification-token-expiry-hours:24}")
     private long tokenExpiryHours;
 
-    public RegistrationServiceImpl(
-            UserRepository userRepository,
-            UserMapper userMapper,
-            VerificationTokenRepository verificationTokenRepository,
-            PasswordEncoder passwordEncoder,
-            EmailService emailService,
-            AuditService auditService
-    ) {
+    public RegistrationServiceImpl(RegistrationRequestRepository requestRepository,
+                                   VerificationTokenRepository tokenRepository,
+                                   UserRepository userRepository,
+                                   PasswordEncoder passwordEncoder,
+                                   EmailService emailService,
+                                   AuditService auditService) {
+        this.requestRepository = requestRepository;
+        this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
-        this.userMapper = userMapper;
-        this.verificationTokenRepository = verificationTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.auditService = auditService;
@@ -57,34 +56,31 @@ public class RegistrationServiceImpl implements RegistrationService {
 
     @Override
     public UserResponseDto register(RegisterRequestDto requestDto) {
-        String normalizedEmail = requestDto.getEmail().trim().toLowerCase();
+        String email = requestDto.getEmail().trim().toLowerCase();
 
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BadRequestException("Email is already registered: " + normalizedEmail);
+        if (userRepository.existsByEmail(email)) {
+            throw new BadRequestException("Email is already registered: " + email);
+        }
+        if (requestRepository.existsByEmailAndRequestStatus(email, RequestStatus.PENDING)) {
+            throw new BadRequestException(
+                    "A registration for this email is already pending. Check your inbox or request a new verification link.");
         }
 
-        String encodedPassword = passwordEncoder.encode(requestDto.getPassword());
+        RegistrationRequest request = new RegistrationRequest(
+                requestDto.getFullName().trim(),
+                email,
+                passwordEncoder.encode(requestDto.getPassword()));
+        requestRepository.save(request);
 
-        User user = new User();
-        user.setEmail(normalizedEmail);
-        user.setPasswordHash(encodedPassword);
-        user.setFullName(requestDto.getFullName().trim());
-        user.setRole(Role.USER);
-        user.setStatus(AccountStatus.PENDING);
-        user.setEmailVerified(false);
+        issueToken(request);
+        auditService.logEvent("REGISTRATION_REQUESTED", null, email, "Registration request submitted");
 
-        User savedUser = userRepository.save(user);
-
-        String rawToken = UUID.randomUUID().toString();
-        String tokenHash = hashToken(rawToken);
-        Instant expiryDate = Instant.now().plus(tokenExpiryHours, ChronoUnit.HOURS);
-        VerificationToken verificationToken = new VerificationToken(tokenHash, savedUser, expiryDate);
-        verificationTokenRepository.save(verificationToken);
-
-        emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFullName(), rawToken);
-        auditService.logEvent("USER_REGISTERED", savedUser.getId(), savedUser.getEmail(), "New user account registered");
-
-        return userMapper.toDto(savedUser);
+        UserResponseDto response = new UserResponseDto();
+        response.setEmail(email);
+        response.setFullName(request.getFullName());
+        response.setRole(Role.USER);
+        response.setEmailVerified(false);
+        return response;
     }
 
     @Override
@@ -93,69 +89,54 @@ public class RegistrationServiceImpl implements RegistrationService {
             throw new BadRequestException("Verification token is required");
         }
 
-        String raw = token.trim();
-        String tokenHash = hashToken(raw);
+        VerificationToken verificationToken = tokenRepository.findByToken(hashToken(token.trim()))
+                .orElseThrow(() -> new BadRequestException("Invalid or expired verification token"));
 
-         VerificationToken verificationToken = verificationTokenRepository.findByToken(tokenHash)
-        .orElseThrow(() -> new BadRequestException("Invalid or expired  verification token"));
+        RegistrationRequest request = verificationToken.getRegistrationRequest();
 
-        if (verificationToken.getUser().isEmailVerified()) {
+        if (request.isEmailVerified()) {
             return;
         }
-
         if (verificationToken.isUsed()) {
             throw new BadRequestException("Verification token has already been used");
         }
-
         if (verificationToken.getExpiryDate().isBefore(Instant.now())) {
             throw new BadRequestException("Verification token has expired");
         }
 
         verificationToken.setUsed(true);
-        verificationTokenRepository.save(verificationToken);
-
-        User user = verificationToken.getUser();
-        user.setEmailVerified(true);
-        userRepository.save(user);
-
-        auditService.logEvent("EMAIL_VERIFIED", user.getId(), user.getEmail(), "User email verified");
+        request.setEmailVerified(true);
+        auditService.logEvent("EMAIL_VERIFIED", null, request.getEmail(), "Email verified");
     }
 
-@Override
-public void resendVerification(String email) {
-    if (email == null || email.isBlank()) {
-        throw new BadRequestException("Email is required");
+    @Override
+    public void resendVerification(String email) {
+        if (email == null || email.isBlank()) {
+            throw new BadRequestException("Email is required");
+        }
+
+        requestRepository.findByEmailAndRequestStatus(email.trim().toLowerCase(), RequestStatus.PENDING)
+                .filter(request -> !request.isEmailVerified())
+                .ifPresent(request -> {
+                    tokenRepository.findAllByRegistrationRequestAndUsedFalse(request)
+                            .forEach(t -> t.setUsed(true));
+                    issueToken(request);
+                });
     }
 
-    userRepository.findByEmail(email.trim().toLowerCase())
-            .filter(user -> !user.isEmailVerified())
-            .ifPresent(user -> {
-                verificationTokenRepository.findAllByUserAndUsedFalse(user)
-                        .forEach(t -> t.setUsed(true));
-
-                String rawToken = UUID.randomUUID().toString();
-                Instant expiryDate = Instant.now().plus(tokenExpiryHours, ChronoUnit.HOURS);
-                verificationTokenRepository.save(new VerificationToken(hashToken(rawToken), user, expiryDate));
-
-                emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), rawToken);
-            });
-}
+    private void issueToken(RegistrationRequest request) {
+        String rawToken = UUID.randomUUID().toString();
+        Instant expiry = Instant.now().plus(tokenExpiryHours, ChronoUnit.HOURS);
+        tokenRepository.save(new VerificationToken(hashToken(rawToken), request, expiry));
+        emailService.sendVerificationEmail(request.getEmail(), request.getFullName(), rawToken);
+    }
 
     private String hashToken(String rawToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] encodedHash = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : encodedHash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
+            throw new IllegalStateException("SHA-256 not available", e);
         }
     }
 }

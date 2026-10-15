@@ -1,8 +1,9 @@
 package com.fixhub.user.mapper;
 
+import com.fixhub.common.auth.entity.RegistrationRequest;
+import com.fixhub.user.dto.RegistrationRequestDto;
 import com.fixhub.user.dto.UserRequestDto;
 import com.fixhub.user.dto.UserResponseDto;
-import com.fixhub.user.entity.AccountStatus;
 import com.fixhub.user.entity.Role;
 import com.fixhub.user.entity.User;
 import org.springframework.stereotype.Component;
@@ -14,21 +15,34 @@ public class UserMapper {
         if (user == null) {
             return null;
         }
-
         UserResponseDto dto = new UserResponseDto();
         dto.setId(user.getId());
         dto.setEmail(user.getEmail());
         dto.setFullName(user.getFullName());
         dto.setRole(user.getRole());
-        dto.setStatus(user.getStatus());
         dto.setDepartment(user.getDepartment());
         dto.setDesignation(user.getDesignation());
         dto.setPhoneNumber(user.getPhoneNumber());
-        dto.setEmailVerified(user.isEmailVerified());
+        dto.setEmailVerified(true);
         dto.setCreatedAt(user.getCreatedOn());
         dto.setUpdatedAt(user.getUpdatedOn());
-        dto.setRejectionReason(user.getRejectionReason());
         dto.setLastLoginAt(user.getLastLoginAt());
+        return dto;
+    }
+
+    public RegistrationRequestDto toRequestDto(RegistrationRequest request) {
+        if (request == null) {
+            return null;
+        }
+        RegistrationRequestDto dto = new RegistrationRequestDto();
+        dto.setId(request.getId());
+        dto.setFullName(request.getFullName());
+        dto.setEmail(request.getEmail());
+        dto.setEmailVerified(request.isEmailVerified());
+        dto.setRequestStatus(request.getRequestStatus());
+        dto.setRejectionReason(request.getRejectionReason());
+        dto.setCreatedAt(request.getCreatedOn());
+        dto.setReviewedOn(request.getReviewedOn());
         return dto;
     }
 
@@ -36,7 +50,6 @@ public class UserMapper {
         if (dto == null) {
             return null;
         }
-
         User user = new User();
         user.setEmail(dto.getEmail() != null ? dto.getEmail().trim().toLowerCase() : null);
         user.setPasswordHash(passwordHash);
@@ -45,7 +58,6 @@ public class UserMapper {
         user.setDesignation(dto.getDesignation());
         user.setPhoneNumber(dto.getPhoneNumber());
         user.setRole(Role.USER);
-        user.setStatus(AccountStatus.PENDING);
         return user;
     }
 }
