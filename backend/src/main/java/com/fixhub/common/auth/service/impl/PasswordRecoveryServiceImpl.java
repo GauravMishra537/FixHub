@@ -94,4 +94,31 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
 
         auditService.logEvent("PASSWORD_SET", user.getId(), user.getEmail(), "Password set for account");
     }
+
+    @Override
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+    User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+    if (user.getRole() == Role.ADMIN) {
+        throw new BadRequestException("Administrator password cannot be changed here");
+    }
+    if (user.getPasswordHash() == null) {
+        throw new BadRequestException("No password set yet. Use 'Set password' instead.");
+    }
+    if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+        throw new BadRequestException("Current password is incorrect");
+    }
+    if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+        throw new BadRequestException("New password must be different from the current one");
+    }
+
+    user.setPasswordHash(passwordEncoder.encode(newPassword));
+    // kill any live reset link
+    user.setPasswordResetTokenHash(null);
+    user.setPasswordResetExpiresAt(null);
+    userRepository.save(user);
+
+    auditService.logEvent("PASSWORD_CHANGED", user.getId(), user.getEmail(), "Password changed by user");
+}
 }

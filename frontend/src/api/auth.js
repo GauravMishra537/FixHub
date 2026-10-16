@@ -57,4 +57,12 @@ export async function setPassword(newPassword) {
     method: 'POST',
     body: JSON.stringify({ newPassword }),
   })
+
+  export async function changePassword(currentPassword, newPassword) {
+  return apiClient('/account/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
 }

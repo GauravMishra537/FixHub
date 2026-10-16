@@ -6,6 +6,7 @@ import com.fixhub.common.auth.dto.SetPasswordRequestDto;
 import com.fixhub.common.auth.security.AuthUser;
 import com.fixhub.common.auth.service.PasswordRecoveryService;
 import com.fixhub.common.dto.ApiResponse;
+import com.fixhub.common.auth.dto.ChangePasswordRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,6 +36,13 @@ public class PasswordRecoveryController {
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequestDto body) {
         passwordRecoveryService.resetPassword(body.token(), body.newPassword());
         return ResponseEntity.ok(ApiResponse.success("Password updated. You can log in now.", null));
+    }
+
+    @PostMapping("/account/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequestDto body,
+                                                        @AuthenticationPrincipal AuthUser actor) {
+    passwordRecoveryService.changePassword(actor.id(), body.currentPassword(), body.newPassword());
+    return ResponseEntity.ok(ApiResponse.success("Password changed.", null));
     }
 
     // Under /api/account so SecurityConfig's anyRequest().authenticated() protects it.

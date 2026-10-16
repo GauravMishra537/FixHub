@@ -7,4 +7,6 @@ public interface PasswordRecoveryService {
     void resetPassword(String token, String newPassword);
 
     void setPassword(Long userId, String newPassword);
+
+    void changePassword(Long userId, String currentPassword, String newPassword);
 }
