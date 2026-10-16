@@ -28,4 +28,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = "SELECT password_hash FROM users WHERE email = :email "
             + "AND deleted_on IS NOT NULL ORDER BY deleted_on DESC LIMIT 1", nativeQuery = true)
     Optional<String> findDeletedPasswordHash(@Param("email") String email);
+
+    Optional<User> findByPasswordResetTokenHash(String passwordResetTokenHash);
 }

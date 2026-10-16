@@ -17,6 +17,7 @@ public class UserResponseDto {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant lastLoginAt;
+    private boolean hasPassword;
 
     public UserResponseDto() {
     }
@@ -53,4 +54,7 @@ public class UserResponseDto {
 
     public Instant getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public boolean isHasPassword() { return hasPassword; }
+    public void setHasPassword(boolean hasPassword) { this.hasPassword = hasPassword; }
 }

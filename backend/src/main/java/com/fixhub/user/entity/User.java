@@ -56,6 +56,15 @@ public class User extends AuditEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "password_reset_token_hash", length = 100)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_expires_at")
+    private Instant passwordResetExpiresAt;
+
+    @Column(name = "password_reset_used_at")
+    private Instant passwordResetUsedAt;
+
     public User() {
     }
 
@@ -92,4 +101,13 @@ public class User extends AuditEntity {
 
     public Instant getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public String getPasswordResetTokenHash() { return passwordResetTokenHash; }
+    public void setPasswordResetTokenHash(String passwordResetTokenHash) { this.passwordResetTokenHash = passwordResetTokenHash; }
+
+    public Instant getPasswordResetExpiresAt() { return passwordResetExpiresAt; }
+    public void setPasswordResetExpiresAt(Instant passwordResetExpiresAt) { this.passwordResetExpiresAt = passwordResetExpiresAt; }
+
+    public Instant getPasswordResetUsedAt() { return passwordResetUsedAt; }
+    public void setPasswordResetUsedAt(Instant passwordResetUsedAt) { this.passwordResetUsedAt = passwordResetUsedAt; }
 }

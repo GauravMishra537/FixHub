@@ -27,6 +27,7 @@ public class UserMapper {
         dto.setCreatedAt(user.getCreatedOn());
         dto.setUpdatedAt(user.getUpdatedOn());
         dto.setLastLoginAt(user.getLastLoginAt());
+        dto.setHasPassword(user.getPasswordHash() != null);
         return dto;
     }
 
