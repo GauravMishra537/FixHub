@@ -37,3 +37,24 @@ export async function resendVerification(email) {
     body: JSON.stringify({ email }),
   })
 }
+
+export async function forgotPassword(email) {
+  return apiClient('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function resetPassword(token, newPassword) {
+  return apiClient('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  })
+}
+
+export async function setPassword(newPassword) {
+  return apiClient('/account/set-password', {
+    method: 'POST',
+    body: JSON.stringify({ newPassword }),
+  })
+}

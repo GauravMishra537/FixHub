@@ -10,6 +10,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminRoute from './components/common/AdminRoute'
 import NotFoundPage from './pages/NotFoundPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import AccountPage from './pages/AccountPage'
 
 export function App() {
   return (
@@ -22,6 +25,9 @@ export function App() {
               <Route path="register" element={<RegisterPage />} />
               <Route path="login" element={<LoginPage />} />
               <Route path="verify-email" element={<VerifyEmailPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
+              <Route path="account" element={<AccountPage />} />
               
               {/* Protected Administrator Route */}
               <Route element={<AdminRoute />}>

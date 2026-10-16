@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { UserPlus, LogIn, LogOut, ShieldCheck } from 'lucide-react'
+import { UserPlus, LogIn, LogOut, ShieldCheck, UserCircle } from 'lucide-react'
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -38,6 +38,14 @@ export function Navbar() {
                   Admin Console
                 </Link>
               )}
+
+              <Link
+                to="/account"
+                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+              >
+                <UserCircle className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                Account
+              </Link>
 
               <div className="text-right hidden sm:block">
                 <div className="text-xs font-semibold text-slate-800">{user?.fullName}</div>
