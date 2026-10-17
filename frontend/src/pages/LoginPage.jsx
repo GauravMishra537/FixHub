@@ -1,14 +1,35 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LogIn, ArrowRight, AlertCircle, Loader2 } from 'lucide-react'
+
+// Google redirect codes. Info = not an error, just a status message.
+const GOOGLE_INFO = {
+  REQUEST_CREATED: 'Request submitted. Waiting for admin approval. You can sign in with Google once approved.',
+  PENDING_APPROVAL: 'Your request is still waiting for admin approval.',
+}
+
+const GOOGLE_ERRORS = {
+  GOOGLE_CANCELLED: 'Google sign-in was cancelled.',
+  GOOGLE_FAILED: 'Google sign-in failed. Please try again.',
+  GOOGLE_NOT_CONFIGURED: 'Google sign-in is not configured.',
+  STATE_INVALID: 'Sign-in session expired. Please try again.',
+  EMAIL_NOT_VERIFIED: 'Your Google email is not verified.',
+  ACCOUNT_REMOVED: 'This account is not available.',
+  GOOGLE_MISMATCH: 'A different Google account is already linked to this user.',
+}
 
 export function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const justVerified = Boolean(location.state?.verified)
   const justReset = Boolean(location.state?.reset)
+
+  const googleCode = searchParams.get('error')
+  const googleInfo = googleCode ? GOOGLE_INFO[googleCode] : null
+  const googleError = googleCode && !googleInfo ? GOOGLE_ERRORS[googleCode] || 'Google sign-in failed.' : null
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -48,21 +69,27 @@ export function LoginPage() {
         </div>
 
         {justVerified && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6">
-          Email verified. An administrator will review your account. You can sign in once it is approved.
-        </div>
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6">
+            Email verified. An administrator will review your account. You can sign in once it is approved.
+          </div>
         )}
 
         {justReset && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6">
-        Password updated. Sign in with your new password.
-        </div>
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6">
+            Password updated. Sign in with your new password.
+          </div>
         )}
-        
-        {error && (
+
+        {googleInfo && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 mb-6">
+            {googleInfo}
+          </div>
+        )}
+
+        {(error || googleError) && (
           <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 mb-6 flex items-start space-x-2">
             <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <span>{error || googleError}</span>
           </div>
         )}
 
@@ -83,12 +110,12 @@ export function LoginPage() {
 
           <div>
             <div className="flex items-center justify-between mb-1">
-            <label className="block text-xs font-semibold text-slate-700">
-            Password
-            </label>
-            <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-800 font-medium">
-            Forgot password?
-            </Link>
+              <label className="block text-xs font-semibold text-slate-700">
+                Password
+              </label>
+              <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                Forgot password?
+              </Link>
             </div>
             <input
               type="password"
@@ -117,6 +144,19 @@ export function LoginPage() {
             </button>
           </div>
         </form>
+
+        <div className="my-5 flex items-center text-xs text-slate-400">
+          <div className="flex-1 border-t border-slate-200" />
+          <span className="px-3">or</span>
+          <div className="flex-1 border-t border-slate-200" />
+        </div>
+
+        <a
+          href="/api/auth/google/start"
+          className="w-full flex items-center justify-center py-2.5 px-4 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors"
+        >
+          Continue with Google
+        </a>
 
         <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <Link to="/register" className="text-blue-600 hover:text-blue-800 font-medium">

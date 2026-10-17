@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { login as apiLogin, logout as apiLogout } from '../api/auth'
 
 const AuthContext = createContext(null)
@@ -14,18 +14,16 @@ export function AuthProvider({ children }) {
     }
   })
 
-  const login = async (credentials) => {
-    const data = await apiLogin(credentials)
-    const accessToken = data.accessToken
-    const userProfile = data.user
-
-    setToken(accessToken)
-    setUser(userProfile)
-    localStorage.setItem('fixhub_token', accessToken)
-    localStorage.setItem('fixhub_user', JSON.stringify(userProfile))
-
-    return userProfile
+  // Stores session. Used by password login and Google login.
+  const completeLogin = (data) => {
+    setToken(data.accessToken)
+    setUser(data.user)
+    localStorage.setItem('fixhub_token', data.accessToken)
+    localStorage.setItem('fixhub_user', JSON.stringify(data.user))
+    return data.user
   }
+
+  const login = async (credentials) => completeLogin(await apiLogin(credentials))
 
   const logout = async () => {
     try {
@@ -46,6 +44,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(token && user),
     isAdmin: user?.role === 'ADMIN',
     login,
+    completeLogin,
     logout,
   }
 

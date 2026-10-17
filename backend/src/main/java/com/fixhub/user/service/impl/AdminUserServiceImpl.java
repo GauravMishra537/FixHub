@@ -1,9 +1,12 @@
 package com.fixhub.user.service.impl;
 
 import com.fixhub.common.audit.service.AuditService;
+import com.fixhub.common.auth.entity.AuthProvider;
 import com.fixhub.common.auth.entity.RegistrationRequest;
 import com.fixhub.common.auth.entity.RequestStatus;
+import com.fixhub.common.auth.entity.UserIdentity;
 import com.fixhub.common.auth.repository.RegistrationRequestRepository;
+import com.fixhub.common.auth.repository.UserIdentityRepository;
 import com.fixhub.common.exception.BadRequestException;
 import com.fixhub.common.exception.ResourceNotFoundException;
 import com.fixhub.user.dto.RegistrationRequestDto;
@@ -25,15 +28,18 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private final UserRepository userRepository;
     private final RegistrationRequestRepository requestRepository;
+    private final UserIdentityRepository identityRepository;
     private final UserMapper userMapper;
     private final AuditService auditService;
 
     public AdminUserServiceImpl(UserRepository userRepository,
                                 RegistrationRequestRepository requestRepository,
+                                UserIdentityRepository identityRepository,
                                 UserMapper userMapper,
                                 AuditService auditService) {
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
+        this.identityRepository = identityRepository;
         this.userMapper = userMapper;
         this.auditService = auditService;
     }
@@ -69,6 +75,11 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         User user = new User(request.getEmail(), request.getPasswordHash(), request.getFullName(), Role.USER);
         User saved = userRepository.save(user);
+
+        // Google signup: carry the Google id over to the new user
+        if (request.getGoogleSubject() != null) {
+            identityRepository.save(new UserIdentity(saved.getId(), AuthProvider.GOOGLE, request.getGoogleSubject()));
+        }
 
         request.setRequestStatus(RequestStatus.APPROVED);
         request.setReviewedBy(actorId);
@@ -107,11 +118,14 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new BadRequestException("You cannot delete your own account");
         }
         if (target.getRole() == Role.ADMIN) {
-        throw new BadRequestException("Administrators cannot be deleted");
+            throw new BadRequestException("Administrators cannot be deleted");
         }
 
         target.softDelete(actorId);
         userRepository.save(target);
+
+        // Free the Google account so the same person can sign up again
+        identityRepository.findByUserId(target.getId()).forEach(identity -> identity.softDelete(actorId));
 
         auditService.logEvent("USER_DELETED", target.getId(), target.getEmail(),
                 "Deleted by " + actorEmail(actorId));

@@ -56,6 +56,9 @@ public class RegistrationRequest extends AuditEntity {
     @Column(name = "reviewed_on")
     private Instant reviewedOn;
 
+     @Column(name = "google_subject")
+    private String googleSubject;
+
     public RegistrationRequest() {
     }
 
@@ -91,4 +94,7 @@ public class RegistrationRequest extends AuditEntity {
 
     public Instant getReviewedOn() { return reviewedOn; }
     public void setReviewedOn(Instant reviewedOn) { this.reviewedOn = reviewedOn; }
+
+        public String getGoogleSubject() { return googleSubject; }
+    public void setGoogleSubject(String googleSubject) { this.googleSubject = googleSubject; }
 }

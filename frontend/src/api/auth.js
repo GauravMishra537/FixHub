@@ -65,3 +65,10 @@ export async function changePassword(currentPassword, newPassword) {
     body: JSON.stringify({ currentPassword, newPassword }),
   })
 }
+
+  export async function exchangeGoogleCode(code) {
+  return apiClient('/auth/google/exchange', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+  }

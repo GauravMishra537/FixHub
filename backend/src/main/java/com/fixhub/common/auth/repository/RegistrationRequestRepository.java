@@ -20,4 +20,5 @@ public interface RegistrationRequestRepository extends JpaRepository<Registratio
     List<RegistrationRequest> findByRequestStatus(RequestStatus status);
 
     long countByRequestStatus(RequestStatus status);
+
 }

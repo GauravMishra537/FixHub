@@ -13,6 +13,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AccountPage from './pages/AccountPage'
+import OAuthCallbackPage from './pages/OAuthCallbackPage'
 
 export function App() {
   return (
@@ -28,6 +29,7 @@ export function App() {
               <Route path="forgot-password" element={<ForgotPasswordPage />} />
               <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="oauth/callback" element={<OAuthCallbackPage />} />
               
               {/* Protected Administrator Route */}
               <Route element={<AdminRoute />}>
