@@ -1,4 +1,4 @@
-package com.fixhub.common.entity;
+package com.fixhub.common.audit.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

@@ -1,6 +1,6 @@
 package com.fixhub.user.entity;
 
-import com.fixhub.common.entity.AuditEntity;
+import com.fixhub.common.audit.entity.AuditEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
