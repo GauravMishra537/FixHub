@@ -123,7 +123,6 @@ public class AdminBootstrapServiceImpl implements AdminBootstrapService {
                 Role.ADMIN
         );
 
-        admin.setDepartment("System Administration");
         admin.setDesignation("Administrator");
 
         // Lets this transaction insert an ADMIN row past the DB trigger (flag dies at commit)

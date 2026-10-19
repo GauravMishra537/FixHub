@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
+import com.fixhub.user.dto.UserProfileRequestDto;
 import java.util.List;
 
 @RestController
@@ -62,10 +62,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(adminUserService.listRequests(status)));
     }
 
-    @PutMapping("/requests/{id}/approve")
+        @PutMapping("/requests/{id}/approve")
     public ResponseEntity<ApiResponse<UserResponseDto>> approve(@PathVariable Long id,
+                                                                @RequestBody(required = false) @Valid UserProfileRequestDto details,
                                                                 @AuthenticationPrincipal AuthUser actor) {
-        return ResponseEntity.ok(ApiResponse.success("User approved", adminUserService.approve(id, actor.id())));
+        return ResponseEntity.ok(ApiResponse.success("User approved",
+                adminUserService.approve(id, details, actor.id())));
     }
 
     @PutMapping("/requests/{id}/reject")

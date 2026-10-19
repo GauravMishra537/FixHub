@@ -10,17 +10,23 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
+@Getter
+@Setter
 @Entity
 @Table(
         name = "users",
         indexes = {
                 @Index(name = "idx_users_email", columnList = "email"),
-                @Index(name = "idx_users_role", columnList = "role")
+                @Index(name = "idx_users_role", columnList = "role"),
+                @Index(name = "idx_users_department", columnList = "department_id")
         }
 )
 @SQLDelete(sql = "UPDATE users SET deleted_on = now(), updated_on = now() WHERE id = ?")
@@ -44,8 +50,11 @@ public class User extends AuditEntity {
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
 
-    @Column(length = 100)
-    private String department;
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    @Column(name = "work_location", length = 100)
+    private String workLocation;
 
     @Column(length = 100)
     private String designation;
@@ -90,8 +99,11 @@ public class User extends AuditEntity {
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
 
-    public String getDepartment() { return department; }
-    public void setDepartment(String department) { this.department = department; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+
+    public String getWorkLocation() { return workLocation; }
+    public void setWorkLocation(String workLocation) { this.workLocation = workLocation; }
 
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }

@@ -22,7 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(Role role);
 
     List<User> findByRole(Role role);
-
+     
+    boolean existsByDepartmentId(Long departmentId);
     // Soft-deleted users are hidden from normal queries, so login uses this to
     // tell a removed person to register again (only after the password matches).
     @Query(value = "SELECT password_hash FROM users WHERE email = :email "

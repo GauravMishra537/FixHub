@@ -10,12 +10,15 @@ import com.fixhub.common.auth.repository.UserIdentityRepository;
 import com.fixhub.common.exception.BadRequestException;
 import com.fixhub.common.exception.ResourceNotFoundException;
 import com.fixhub.user.dto.RegistrationRequestDto;
+import com.fixhub.user.dto.UserProfileRequestDto;
 import com.fixhub.user.dto.UserResponseDto;
 import com.fixhub.user.entity.Role;
 import com.fixhub.user.entity.User;
 import com.fixhub.user.mapper.UserMapper;
 import com.fixhub.user.repository.UserRepository;
+import com.fixhub.user.repository.UserSkillRepository;
 import com.fixhub.user.service.AdminUserService;
+import com.fixhub.user.service.UserProfileService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,17 +32,23 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final RegistrationRequestRepository requestRepository;
     private final UserIdentityRepository identityRepository;
+    private final UserSkillRepository userSkillRepository;
+    private final UserProfileService userProfileService;
     private final UserMapper userMapper;
     private final AuditService auditService;
 
     public AdminUserServiceImpl(UserRepository userRepository,
                                 RegistrationRequestRepository requestRepository,
                                 UserIdentityRepository identityRepository,
+                                UserSkillRepository userSkillRepository,
+                                UserProfileService userProfileService,
                                 UserMapper userMapper,
                                 AuditService auditService) {
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
         this.identityRepository = identityRepository;
+        this.userSkillRepository = userSkillRepository;
+        this.userProfileService = userProfileService;
         this.userMapper = userMapper;
         this.auditService = auditService;
     }
@@ -60,7 +69,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public UserResponseDto approve(Long requestId, Long actorId) {
+    public UserResponseDto approve(Long requestId, UserProfileRequestDto details, Long actorId) {
         RegistrationRequest request = loadRequest(requestId);
 
         if (request.getRequestStatus() != RequestStatus.PENDING) {
@@ -79,6 +88,12 @@ public class AdminUserServiceImpl implements AdminUserService {
         // Google signup: carry the Google id over to the new user
         if (request.getGoogleSubject() != null) {
             identityRepository.save(new UserIdentity(saved.getId(), AuthProvider.GOOGLE, request.getGoogleSubject()));
+        }
+
+        // Department, designation, skills chosen by admin in the approve dialog.
+        // Same transaction: any error here rolls back the whole approval.
+        if (details != null) {
+            userProfileService.updateProfile(saved.getId(), details, actorId);
         }
 
         request.setRequestStatus(RequestStatus.APPROVED);
@@ -126,6 +141,9 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         // Free the Google account so the same person can sign up again
         identityRepository.findByUserId(target.getId()).forEach(identity -> identity.softDelete(actorId));
+
+        // Remove the user's skill links (pending, approved, rejected)
+        userSkillRepository.findByUserId(target.getId()).forEach(link -> link.softDelete(actorId));
 
         auditService.logEvent("USER_DELETED", target.getId(), target.getEmail(),
                 "Deleted by " + actorEmail(actorId));

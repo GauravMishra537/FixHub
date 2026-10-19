@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.stream.Collectors;
 
@@ -47,10 +48,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorMsg));
     }
 
+    @ExceptionHandler(ResponseStatusException.class)
+     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+    return ResponseEntity.status(ex.getStatusCode()).body(ApiResponse.error(ex.getReason()));
+}
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("An unexpected server error occurred"));
     }
+    
 }

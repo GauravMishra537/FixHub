@@ -4,12 +4,20 @@ import com.fixhub.common.auth.entity.RegistrationRequest;
 import com.fixhub.user.dto.RegistrationRequestDto;
 import com.fixhub.user.dto.UserRequestDto;
 import com.fixhub.user.dto.UserResponseDto;
+import com.fixhub.user.entity.Department;
 import com.fixhub.user.entity.Role;
 import com.fixhub.user.entity.User;
+import com.fixhub.user.repository.DepartmentRepository;
 import org.springframework.stereotype.Component;
 
 @Component
 public class UserMapper {
+
+    private final DepartmentRepository departmentRepository;
+
+    public UserMapper(DepartmentRepository departmentRepository) {
+        this.departmentRepository = departmentRepository;
+    }
 
     public UserResponseDto toDto(User user) {
         if (user == null) {
@@ -20,8 +28,14 @@ public class UserMapper {
         dto.setEmail(user.getEmail());
         dto.setFullName(user.getFullName());
         dto.setRole(user.getRole());
-        dto.setDepartment(user.getDepartment());
+        dto.setDepartmentId(user.getDepartmentId());
+        if (user.getDepartmentId() != null) {
+            departmentRepository.findById(user.getDepartmentId())
+                    .map(Department::getName)
+                    .ifPresent(dto::setDepartmentName);
+        }
         dto.setDesignation(user.getDesignation());
+        dto.setWorkLocation(user.getWorkLocation());
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setEmailVerified(true);
         dto.setCreatedAt(user.getCreatedOn());
@@ -55,7 +69,6 @@ public class UserMapper {
         user.setEmail(dto.getEmail() != null ? dto.getEmail().trim().toLowerCase() : null);
         user.setPasswordHash(passwordHash);
         user.setFullName(dto.getFullName() != null ? dto.getFullName().trim() : null);
-        user.setDepartment(dto.getDepartment());
         user.setDesignation(dto.getDesignation());
         user.setPhoneNumber(dto.getPhoneNumber());
         user.setRole(Role.USER);

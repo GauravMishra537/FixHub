@@ -10,8 +10,10 @@ public class UserResponseDto {
     private String email;
     private String fullName;
     private Role role;
-    private String department;
+    private Long departmentId;
+    private String departmentName;
     private String designation;
+    private String workLocation;
     private String phoneNumber;
     private boolean emailVerified;
     private Instant createdAt;
@@ -34,11 +36,17 @@ public class UserResponseDto {
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
 
-    public String getDepartment() { return department; }
-    public void setDepartment(String department) { this.department = department; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
 
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
+
+    public String getWorkLocation() { return workLocation; }
+    public void setWorkLocation(String workLocation) { this.workLocation = workLocation; }
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
