@@ -18,6 +18,7 @@ import OrgSetupPage from "./pages/admin/OrgSetupPage";
 import SkillReviewPage from "./pages/admin/SkillReviewPage";
 import AuditLogsPage from "./pages/admin/AuditLogsPage";
 import UsersPage from './pages/admin/UsersPage'
+import ComingSoonPage from './pages/ComingSoonPage'
 
 export function App() {
   return (
@@ -33,6 +34,10 @@ export function App() {
               <Route path="forgot-password" element={<ForgotPasswordPage />} />
               <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route path="account" element={<AccountPage />} />
+              <Route path="issues" element={<ComingSoonPage title="Issue Tickets" />} />
+              <Route path="rooms" element={<ComingSoonPage title="Room Booking" />} />
+              <Route path="resources" element={<ComingSoonPage title="Resource Requests" />} />
+              <Route path="topics" element={<ComingSoonPage title="Learning / Topic Requests" />} />
               <Route path="oauth/callback" element={<OAuthCallbackPage />} />
               
               {/* Protected Administrator Route */}
