@@ -1,11 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { UserCircle, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { UserCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getCurrentUser, setPassword } from '../api/auth'
 import ChangePasswordForm from '../components/account/ChangePasswordForm'
+import MySkills from '../components/account/MySkills'
+import ContactForm from '../components/account/ContactForm'
+import PageHeader from '../components/common/PageHeader'
+import Alert from '../components/common/Alert'
 
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/
+const FIELD =
+  'w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all'
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between py-2.5">
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="font-medium text-slate-900 text-right">{value || <span className="text-slate-400">Not set</span>}</dd>
+    </div>
+  )
+}
 
 export function AccountPage() {
   const { isAuthenticated } = useAuth()
@@ -67,59 +82,50 @@ export function AccountPage() {
     }
   }
 
+  const isAdminUser = profile?.role === 'ADMIN'
+
   return (
-    <div className="max-w-md mx-auto py-10">
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100">
-            <UserCircle className="w-6 h-6" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My account</h1>
+    <div>
+      <PageHeader icon={UserCircle} title="My account" subtitle="Your details, password and skills." />
+
+      {loading ? (
+        <div className="flex items-center justify-center text-slate-500 text-sm py-10">
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...
         </div>
+      ) : (
+        <>
+          {notice && <Alert type="success">{notice}</Alert>}
+          {error && <Alert>{error}</Alert>}
 
-        {loading ? (
-          <div className="flex items-center justify-center text-slate-500 text-sm py-6">
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...
-          </div>
-        ) : (
-          <>
-            {notice && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 mb-6 flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{notice}</span>
-              </div>
-            )}
+          {profile && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-6">
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                  <h2 className="font-semibold text-slate-900 mb-2">Details</h2>
+                  <dl className="divide-y divide-slate-100 text-sm">
+                    <Row label="Name" value={profile.fullName} />
+                    <Row label="Email" value={profile.email} />
+                    <Row label="Role" value={profile.role} />
+                    {!isAdminUser && (
+                      <>
+                        <Row label="Department" value={profile.departmentName} />
+                        <Row label="Designation" value={profile.designation} />
+                        <Row label="Work location" value={profile.workLocation} />
+                        <Row label="Phone" value={profile.phoneNumber} />
+                      </>
+                    )}
+                  </dl>
+                                    {!isAdminUser && !profile.departmentName && (
+                    <p className="mt-3 text-xs text-slate-500">Department and designation are set by an admin.</p>
+                  )}
+                  {!isAdminUser && <ContactForm key={`${profile.phoneNumber}-${profile.workLocation}`} profile={profile} onSaved={loadProfile} />}
+                </section>
 
-            {error && (
-              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 mb-6 flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {profile && (
-              <>
-                <dl className="space-y-2 text-sm mb-6">
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Name</dt>
-                    <dd className="font-medium text-slate-900">{profile.fullName}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Email</dt>
-                    <dd className="font-medium text-slate-900">{profile.email}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Role</dt>
-                    <dd className="font-medium text-slate-900">{profile.role}</dd>
-                  </div>
-                </dl>
-
-                <div className="pt-5 border-t border-slate-100">
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                  <h2 className="font-semibold text-slate-900 mb-3">Password</h2>
                   {profile.hasPassword ? (
-                    profile.role === 'ADMIN' ? (
-                      <p className="text-xs text-slate-500">
-                        Administrator password cannot be changed from the app.
-                      </p>
+                    isAdminUser ? (
+                      <p className="text-xs text-slate-500">Administrator password cannot be changed from the app.</p>
                     ) : (
                       <ChangePasswordForm />
                     )
@@ -135,7 +141,7 @@ export function AccountPage() {
                           required
                           value={password}
                           onChange={(e) => setPasswordValue(e.target.value)}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          className={FIELD}
                         />
                       </div>
                       <div>
@@ -145,7 +151,7 @@ export function AccountPage() {
                           required
                           value={confirm}
                           onChange={(e) => setConfirm(e.target.value)}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          className={FIELD}
                         />
                       </div>
                       <button
@@ -164,12 +170,14 @@ export function AccountPage() {
                       </button>
                     </form>
                   )}
-                </div>
-              </>
-            )}
-          </>
-        )}
-      </div>
+                </section>
+              </div>
+
+              {!isAdminUser && <MySkills />}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

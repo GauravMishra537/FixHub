@@ -14,6 +14,10 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AccountPage from './pages/AccountPage'
 import OAuthCallbackPage from './pages/OAuthCallbackPage'
+import OrgSetupPage from "./pages/admin/OrgSetupPage";
+import SkillReviewPage from "./pages/admin/SkillReviewPage";
+import AuditLogsPage from "./pages/admin/AuditLogsPage";
+import UsersPage from './pages/admin/UsersPage'
 
 export function App() {
   return (
@@ -34,6 +38,10 @@ export function App() {
               {/* Protected Administrator Route */}
               <Route element={<AdminRoute />}>
                 <Route path="admin" element={<AdminDashboardPage />} />
+                <Route path="admin/org-setup" element={<OrgSetupPage />} />
+                <Route path="admin/skill-review" element={<SkillReviewPage />} />
+                <Route path="admin/audit-logs" element={<AuditLogsPage />} />
+                <Route path="admin/users" element={<UsersPage />} />
               </Route>
 
               <Route path="*" element={<NotFoundPage />} />
