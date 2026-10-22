@@ -30,7 +30,7 @@ const SHORTCUTS = [
   { to: '/admin/org-setup', label: 'Departments & Skills', icon: Building2, tone: 'text-violet-600 bg-violet-50' },
   { to: '/admin/skill-review', label: 'Skill Review', icon: ClipboardCheck, tone: 'text-emerald-600 bg-emerald-50' },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, tone: 'text-amber-600 bg-amber-50' },
-  { label: 'Categories', icon: Tags, soon: true },
+    { to: '/admin/categories', label: 'Categories', icon: Tags, tone: 'text-rose-600 bg-rose-50' },
   { label: 'Rooms', icon: DoorOpen, soon: true },
   { label: 'Resources', icon: Laptop, soon: true },
   { label: 'Routing Rules', icon: GitBranch, soon: true },

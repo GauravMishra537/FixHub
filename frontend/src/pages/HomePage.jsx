@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Wrench,
@@ -9,15 +9,15 @@ import {
   Clock,
   CheckCircle2,
   UserRound,
-  LogIn,
-  UserPlus,
   ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { ticketCoreApi } from '../api/ticketCore'
+import TicketTable from '../components/tickets/TicketTable'
 
 const MODULES = [
   {
-    to: '/issues',
+    to: '/issues/new',
     title: 'Issue Ticket',
     tag: 'Workplace & IT',
     text: 'Report electrical, plumbing, AC, IT hardware, network, or office maintenance problems.',
@@ -58,16 +58,6 @@ const MODULES = [
   },
 ]
 
-const STATS = [
-  { label: 'Total Tickets', value: 0, icon: Ticket, card: 'bg-blue-50 border-blue-100', iconBox: 'bg-blue-600' },
-  { label: 'Pending', value: 0, icon: Clock, card: 'bg-amber-50 border-amber-100', iconBox: 'bg-amber-500' },
-  { label: 'Resolved', value: 0, icon: CheckCircle2, card: 'bg-emerald-50 border-emerald-100', iconBox: 'bg-emerald-600' },
-  { label: 'My Tickets', value: 0, icon: UserRound, card: 'bg-violet-50 border-violet-100', iconBox: 'bg-violet-600' },
-]
-
-const TABS = ['My Tickets', 'Assigned to Me', 'Recent Activity']
-const COLUMNS = ['ID', 'Title', 'Type', 'Status', 'Priority', 'Created On', 'Action']
-
 function GuestHome() {
   return (
     <div className="text-center">
@@ -78,23 +68,6 @@ function GuestHome() {
       <p className="mt-2 text-sm text-slate-500">
         One platform for all office workplace requests, room reservations, resource management, and peer learning.
       </p>
-
-      <div className="mt-8 inline-flex gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
-        <Link
-          to="/login"
-          className="inline-flex items-center px-8 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <LogIn className="w-4 h-4 mr-2" />
-          Login
-        </Link>
-        <Link
-          to="/register"
-          className="inline-flex items-center px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Register
-        </Link>
-      </div>
 
       <h2 className="mt-12 text-xl font-bold text-slate-900">Tracking Modules</h2>
       <p className="text-sm text-slate-500 mb-6">Login to track and resolve office operations</p>
@@ -123,9 +96,72 @@ function GuestHome() {
   )
 }
 
+
+const VIEW_TITLES = {
+  MINE: 'My Tickets',
+  PENDING: 'My Pending Tickets',
+  RESOLVED: 'My Resolved Tickets',
+  TOTAL: 'All Tickets',
+}
+
+const VIEW_HINTS = {
+  MINE: 'Every ticket you raised. Click a row to see details.',
+  PENDING: 'Your tickets that are still being worked on.',
+  RESOLVED: 'Your tickets that are done.',
+  TOTAL: 'Every public ticket in the office plus your own. Click a row to see details.',
+}
+
 function UserDashboard({ name }) {
-  const [tab, setTab] = useState(TABS[0])
   const firstName = (name || '').split(' ')[0]
+
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+
+  // one list section at the bottom. the 4 boxes decide what it shows
+  const [view, setView] = useState('MINE')
+  const [page, setPage] = useState(0)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const listRef = useRef(null)
+
+  useEffect(() => {
+    ticketCoreApi.summary().then(setSummary).catch((e) => setError(e.message))
+  }, [])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result =
+        view === 'TOTAL'
+          ? await ticketCoreApi.list(page, 10)
+          : await ticketCoreApi.mine(view === 'MINE' ? '' : view, page, 10)
+      setData(result)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [view, page])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const selectView = (key) => {
+    if (key !== view) {
+      setView(key)
+      setPage(0)
+      setData(null)
+    }
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const stats = [
+    { key: 'MINE', label: 'My Tickets', value: summary?.mine, icon: UserRound, card: 'bg-violet-50 border-violet-100', iconBox: 'bg-violet-600' },
+    { key: 'PENDING', label: 'Pending', value: summary?.minePending, icon: Clock, card: 'bg-amber-50 border-amber-100', iconBox: 'bg-amber-500' },
+    { key: 'RESOLVED', label: 'Resolved', value: summary?.mineResolved, icon: CheckCircle2, card: 'bg-emerald-50 border-emerald-100', iconBox: 'bg-emerald-600' },
+    { key: 'TOTAL', label: 'All Tickets', value: summary?.totalVisible, icon: Ticket, card: 'bg-blue-50 border-blue-100', iconBox: 'bg-blue-600' },
+  ]
 
   return (
     <div>
@@ -134,17 +170,29 @@ function UserDashboard({ name }) {
         <p className="text-sm text-slate-500">Here is what is happening with your requests.</p>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+      )}
+
+      {/* 4 clickable boxes */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {STATS.map(({ label, value, icon: Icon, card, iconBox }) => (
-          <div key={label} className={`rounded-2xl border p-4 flex items-center space-x-3 ${card}`}>
+        {stats.map(({ key, label, value, icon: Icon, card, iconBox }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => selectView(key)}
+            className={`rounded-2xl border p-4 flex items-center space-x-3 text-left transition hover:shadow-md ${card} ${
+              view === key ? 'ring-2 ring-blue-500' : ''
+            }`}
+          >
             <span className={`w-11 h-11 rounded-xl text-white flex items-center justify-center ${iconBox}`}>
               <Icon className="w-5 h-5" />
             </span>
             <div>
               <div className="text-xs font-medium text-slate-600">{label}</div>
-              <div className="text-2xl font-bold text-slate-900 leading-tight">{value}</div>
+              <div className="text-2xl font-bold text-slate-900 leading-tight">{value ?? '-'}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -170,45 +218,22 @@ function UserDashboard({ name }) {
         </div>
       </section>
 
-      <section className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex gap-1 border-b border-slate-100 px-3 pt-3">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                tab === t ? 'text-blue-700 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+      {/* the one list section, at the bottom */}
+      <section ref={listRef} className="mt-6 scroll-mt-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="px-5 pt-4 pb-2">
+          <h2 className="font-semibold text-slate-900">{VIEW_TITLES[view]}</h2>
+          <p className="text-xs text-slate-500">{VIEW_HINTS[view]}</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-100">
-                {COLUMNS.map((c) => (
-                  <th key={c} className="px-4 py-3 font-semibold">
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={COLUMNS.length} className="px-4 py-10 text-center text-slate-400">
-                  Nothing in "{tab}" yet. Use a quick action above to get started.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <TicketTable
+          data={data}
+          loading={loading}
+          onPage={setPage}
+          emptyText={view === 'TOTAL' ? 'No tickets yet.' : 'No tickets here. Use a quick action above to raise one.'}
+        />
       </section>
     </div>
   )
 }
-
 export default function HomePage() {
   const { user, isAuthenticated, isAdmin } = useAuth()
 

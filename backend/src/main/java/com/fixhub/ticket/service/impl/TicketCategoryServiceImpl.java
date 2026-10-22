@@ -13,8 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Propagation;
+import java.util.Optional;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class TicketCategoryServiceImpl implements TicketCategoryService {
@@ -103,6 +106,125 @@ public class TicketCategoryServiceImpl implements TicketCategoryService {
         categoryRepository.delete(category);
         auditRecorder.record("TICKET_CATEGORY_DELETED",
                 "Category deleted: " + category.getName() + " (" + category.getTicketType() + ")");
+    }
+
+        @Override
+    @Transactional(readOnly = true)
+    public List<TicketCategoryResponseDto> suggest(TicketType type, String text) {
+        String q = text == null ? "" : text.trim();
+        if (q.isEmpty()) {
+            // nothing typed yet: show the first few so the box is not empty
+            return categoryRepository.findByTicketTypeAndActiveTrueOrderByNameAsc(type).stream()
+                    .limit(8)
+                    .map(categoryMapper::toDto)
+                    .toList();
+        }
+        // % _ and \ typed by the user must match literally
+        String escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return categoryRepository.suggest(type, escaped, PageRequest.of(0, 8)).stream()
+                .map(categoryMapper::toDto)
+                .toList();
+    }
+
+    // own transaction: if two users create the same new name at the same moment,
+    // the loser fails alone and the ticket flow can pick up the winner's row
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public TicketCategoryResponseDto findOrCreate(TicketType type, String rawName) {
+        String name = rawName == null ? "" : rawName.trim().replaceAll("\\s+", " ");
+        if (name.length() < 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category must be at least 2 characters");
+        }
+        if (name.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category cannot exceed 100 characters");
+        }
+
+              // 1) exact name ignoring case, 2) same name after plural/symbol/typo clean-up
+        Optional<TicketCategory> existing = categoryRepository.findByTicketTypeAndNameIgnoreCase(type, name);
+        if (existing.isEmpty()) {
+            String typedKey = matchKey(name);
+            existing = categoryRepository.findByTicketTypeOrderByNameAsc(type).stream()
+                    .filter(c -> isSameCategory(typedKey, matchKey(c.getName())))
+                    .findFirst();
+        }
+        if (existing.isPresent()) {
+            TicketCategory found = existing.get();
+            if (!found.isActive()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Category \"" + found.getName() + "\" is not available. Choose another");
+            }
+            return categoryMapper.toDto(found);
+        }
+
+        TicketCategory category = new TicketCategory();
+        category.setTicketType(type);
+        category.setName(name);
+        category.setActive(true);
+        TicketCategory saved = categoryRepository.saveAndFlush(category);
+        auditRecorder.record("TICKET_CATEGORY_CREATED",
+                "Category created while raising a ticket: " + saved.getName() + " (" + type + ")");
+        return categoryMapper.toDto(saved);
+    }
+
+        // "Wi-Fi", "WiFi", "wi fi" -> "wifi". "Lights" -> "light". "Switches" -> "switch". "Supplies" -> "supply"
+    private static String matchKey(String name) {
+        String k = name.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]", "");
+        if (k.length() > 4 && k.endsWith("ies")) {
+            return k.substring(0, k.length() - 3) + "y";
+        }
+        if (k.length() > 4 && (k.endsWith("sses") || k.endsWith("xes") || k.endsWith("ches")
+                || k.endsWith("shes") || k.endsWith("zes"))) {
+            return k.substring(0, k.length() - 2);
+        }
+        if (k.length() > 3 && k.endsWith("s") && !k.endsWith("ss")) {
+            return k.substring(0, k.length() - 1);
+        }
+        return k;
+    }
+
+    // same key, or one letter off for longer names without digits ("Electrcal" ~ "Electrical").
+    // digits are skipped so "Floor1" and "Floor2" stay different
+    private static boolean isSameCategory(String a, String b) {
+        if (a.isEmpty() || b.isEmpty()) {
+            return false;
+        }
+        if (a.equals(b)) {
+            return true;
+        }
+        if (a.length() < 5 || b.length() < 5 || a.matches(".*\\d.*") || b.matches(".*\\d.*")) {
+            return false;
+        }
+        return oneEditApart(a, b);
+    }
+
+    private static boolean oneEditApart(String a, String b) {
+        int la = a.length();
+        int lb = b.length();
+        if (Math.abs(la - lb) > 1) {
+            return false;
+        }
+        int i = 0;
+        int j = 0;
+        int edits = 0;
+        while (i < la && j < lb) {
+            if (a.charAt(i) == b.charAt(j)) {
+                i++;
+                j++;
+                continue;
+            }
+            if (++edits > 1) {
+                return false;
+            }
+            if (la > lb) {
+                i++;
+            } else if (lb > la) {
+                j++;
+            } else {
+                i++;
+                j++;
+            }
+        }
+        return edits + (la - i) + (lb - j) <= 1;
     }
 
     private TicketCategory findById(Long id) {
