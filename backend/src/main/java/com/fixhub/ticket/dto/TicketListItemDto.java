@@ -20,8 +20,8 @@ public class TicketListItemDto {
     private TicketStatus status;
     private TicketPriority priority;
 
-    private Long requesterId;
-    private String requesterName;
+    private Long authorId;
+    private String authorName;
     private String assigneeName;
     private String categoryName;
 

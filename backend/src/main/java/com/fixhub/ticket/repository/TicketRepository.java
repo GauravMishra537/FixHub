@@ -25,14 +25,14 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             select t from Ticket t
             where :admin = true
                or t.visibility = com.fixhub.ticket.entity.TicketVisibility.PUBLIC
-               or t.requesterId = :viewerId
+               or t.authorId = :viewerId
                or t.assigneeId = :viewerId
             """,
             countQuery = """
             select count(t) from Ticket t
             where :admin = true
                or t.visibility = com.fixhub.ticket.entity.TicketVisibility.PUBLIC
-               or t.requesterId = :viewerId
+               or t.authorId = :viewerId
                or t.assigneeId = :viewerId
             """)
     Page<Ticket> findVisible(@Param("admin") boolean admin,
@@ -43,19 +43,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             select count(t) from Ticket t
             where :admin = true
                or t.visibility = com.fixhub.ticket.entity.TicketVisibility.PUBLIC
-               or t.requesterId = :viewerId
+               or t.authorId = :viewerId
                or t.assigneeId = :viewerId
             """)
     long countVisible(@Param("admin") boolean admin, @Param("viewerId") Long viewerId);
 
     // ---------- my tickets (raised by me) ----------
-    Page<Ticket> findByRequesterId(Long requesterId, Pageable pageable);
+    Page<Ticket> findByAuthorId(Long authorId, Pageable pageable);
 
-    Page<Ticket> findByRequesterIdAndStatusIn(Long requesterId,
+    Page<Ticket> findByAuthorIdAndStatusIn(Long authorId,
                                               Collection<TicketStatus> statuses,
                                               Pageable pageable);
 
-    long countByRequesterId(Long requesterId);
+    long countByAuthorId(Long authorId);
 
-    long countByRequesterIdAndStatusIn(Long requesterId, Collection<TicketStatus> statuses);
+    long countByAuthorIdAndStatusIn(Long authorId, Collection<TicketStatus> statuses);
 }

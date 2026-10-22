@@ -74,7 +74,7 @@ public class TicketRules {
             return true;
         }
         return viewerId != null
-                && (viewerId.equals(ticket.getRequesterId()) || viewerId.equals(ticket.getAssigneeId()));
+                && (viewerId.equals(ticket.getAuthorId()) || viewerId.equals(ticket.getAssigneeId()));
     }
 
     // ---------- edit ----------
@@ -86,7 +86,7 @@ public class TicketRules {
 
     /** null = allowed. Otherwise a message that is safe to show the user. */
     public String editDeniedReason(Ticket ticket, Long viewerId) {
-        if (viewerId == null || !viewerId.equals(ticket.getRequesterId())) {
+        if (viewerId == null || !viewerId.equals(ticket.getAuthorId())) {
             return "Only the person who raised this ticket can edit it";
         }
         Set<TicketStatus> allowed = EDITABLE.getOrDefault(ticket.getType(), Set.of());

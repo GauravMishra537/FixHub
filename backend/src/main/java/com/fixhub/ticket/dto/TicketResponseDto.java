@@ -23,8 +23,8 @@ public class TicketResponseDto {
     private TicketPriority priority;
     private TicketVisibility visibility;
 
-    private Long requesterId;
-    private String requesterName;
+    private Long authorId;
+    private String authorName;
     private Long assigneeId;
     private String assigneeName;
 

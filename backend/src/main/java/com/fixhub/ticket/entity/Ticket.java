@@ -54,8 +54,8 @@ public class Ticket extends AuditEntity {
     @Column(nullable = false, length = 20)
     private TicketVisibility visibility = TicketVisibility.PRIVATE;
 
-    @Column(name = "requester_id", nullable = false, updatable = false)
-    private Long requesterId;
+    @Column(name = "author_id", nullable = false, updatable = false)
+    private Long authorId;
 
     @Column(name = "assignee_id")
     private Long assigneeId;

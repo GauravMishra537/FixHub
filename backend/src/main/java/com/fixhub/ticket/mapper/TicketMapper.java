@@ -31,8 +31,8 @@ public class TicketMapper {
         dto.setPriority(t.getPriority());
         dto.setVisibility(t.getVisibility());
 
-        dto.setRequesterId(t.getRequesterId());
-        dto.setRequesterName(names.users().getOrDefault(t.getRequesterId(), FORMER_USER));
+        dto.setAuthorId(t.getAuthorId());
+        dto.setAuthorName(names.users().getOrDefault(t.getAuthorId(), FORMER_USER));
         dto.setAssigneeId(t.getAssigneeId());
         if (t.getAssigneeId() != null) {
             dto.setAssigneeName(names.users().getOrDefault(t.getAssigneeId(), FORMER_USER));
@@ -65,8 +65,8 @@ public class TicketMapper {
         dto.setTitle(t.getTitle());
         dto.setStatus(t.getStatus());
         dto.setPriority(t.getPriority());
-        dto.setRequesterId(t.getRequesterId());
-        dto.setRequesterName(names.users().getOrDefault(t.getRequesterId(), FORMER_USER));
+        dto.setAuthorId(t.getAuthorId());
+        dto.setAuthorName(names.users().getOrDefault(t.getAuthorId(), FORMER_USER));
         if (t.getAssigneeId() != null) {
             dto.setAssigneeName(names.users().getOrDefault(t.getAssigneeId(), FORMER_USER));
         }

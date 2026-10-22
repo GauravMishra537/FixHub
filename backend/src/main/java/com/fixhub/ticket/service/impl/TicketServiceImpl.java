@@ -103,7 +103,7 @@ public class TicketServiceImpl implements TicketService {
         ticket.setStatus(rules.initialStatus(type));
         ticket.setPriority(request.getPriority() == null ? TicketPriority.MEDIUM : request.getPriority());
         ticket.setVisibility(request.getVisibility() == null ? TicketVisibility.PUBLIC : request.getVisibility());
-        ticket.setRequesterId(actor.id());
+        ticket.setAuthorId(actor.id());
         ticket.setCategoryId(resolveCategoryId(type, request.getCategoryName()));
         // department stays empty. routing rules fill it in Commit 15
         ticket.setTicketNo(numberService.nextTicketNo());
@@ -135,10 +135,10 @@ public class TicketServiceImpl implements TicketService {
         Pageable pageable = pageable(page, size);
         String g = group == null ? "" : group.trim().toUpperCase();
         Page<Ticket> result = switch (g) {
-            case "" -> ticketRepository.findByRequesterId(actor.id(), pageable);
-            case "PENDING" -> ticketRepository.findByRequesterIdAndStatusIn(
+            case "" -> ticketRepository.findByAuthorId(actor.id(), pageable);
+            case "PENDING" -> ticketRepository.findByAuthorIdAndStatusIn(
                     actor.id(), rules.pendingStatuses(), pageable);
-            case "RESOLVED" -> ticketRepository.findByRequesterIdAndStatusIn(
+            case "RESOLVED" -> ticketRepository.findByAuthorIdAndStatusIn(
                     actor.id(), rules.resolvedStatuses(), pageable);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Group must be PENDING or RESOLVED");
@@ -151,9 +151,9 @@ public class TicketServiceImpl implements TicketService {
     public TicketSummaryDto summary(TicketActor actor) {
         return new TicketSummaryDto(
                 ticketRepository.countVisible(actor.admin(), actor.id()),
-                ticketRepository.countByRequesterId(actor.id()),
-                ticketRepository.countByRequesterIdAndStatusIn(actor.id(), rules.pendingStatuses()),
-                ticketRepository.countByRequesterIdAndStatusIn(actor.id(), rules.resolvedStatuses()));
+                ticketRepository.countByAuthorId(actor.id()),
+                ticketRepository.countByAuthorIdAndStatusIn(actor.id(), rules.pendingStatuses()),
+                ticketRepository.countByAuthorIdAndStatusIn(actor.id(), rules.resolvedStatuses()));
     }
 
     @Override
@@ -178,7 +178,7 @@ public class TicketServiceImpl implements TicketService {
     public TicketResponseDto update(Long id, TicketUpdateRequestDto request, TicketActor actor) {
         Ticket ticket = findViewable(id, actor);
 
-        if (!actor.id().equals(ticket.getRequesterId())) {
+        if (!actor.id().equals(ticket.getAuthorId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Only the person who raised this ticket can edit it");
         }
@@ -298,7 +298,7 @@ public class TicketServiceImpl implements TicketService {
         Set<Long> categoryIds = new HashSet<>();
         Set<Long> departmentIds = new HashSet<>();
         for (Ticket t : tickets) {
-            userIds.add(t.getRequesterId());
+            userIds.add(t.getAuthorId());
             if (t.getAssigneeId() != null) userIds.add(t.getAssigneeId());
             if (t.getCategoryId() != null) categoryIds.add(t.getCategoryId());
             if (t.getDepartmentId() != null) departmentIds.add(t.getDepartmentId());

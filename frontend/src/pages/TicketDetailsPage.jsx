@@ -247,7 +247,7 @@ export default function TicketDetailsPage() {
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="mb-4 font-semibold text-slate-900">Details</h2>
           <div className="space-y-4">
-            <Field label="Raised by">{ticket.requesterName}</Field>
+            <Field label="Author">{ticket.authorName}</Field>
             <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>
             <Field label="Category">{ticket.categoryName || '-'}</Field>
             <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>
