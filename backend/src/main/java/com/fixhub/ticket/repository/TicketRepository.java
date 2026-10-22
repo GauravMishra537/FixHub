@@ -7,10 +7,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import com.fixhub.ticket.entity.TicketType;
+import java.util.List;
 
 import java.util.Collection;
 
-public interface TicketRepository extends JpaRepository<Ticket, Long> {
+public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
     // blocks deleting a category that tickets still use
     boolean existsByCategoryId(Long categoryId);
@@ -58,4 +61,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countByAuthorId(Long authorId);
 
     long countByAuthorIdAndStatusIn(Long authorId, Collection<TicketStatus> statuses);
+
+        // ticket count per category, only tickets this viewer may see. row = [categoryId, count]
+    @Query("""
+            select t.categoryId, count(t) from Ticket t
+            where t.type = :type
+              and t.categoryId is not null
+              and (:admin = true
+                   or t.visibility = com.fixhub.ticket.entity.TicketVisibility.PUBLIC
+                   or t.authorId = :viewerId
+                   or t.assigneeId = :viewerId)
+            group by t.categoryId
+            """)
+    List<Object[]> countByCategoryVisible(@Param("type") TicketType type,
+                                          @Param("admin") boolean admin,
+                                          @Param("viewerId") Long viewerId);
 }

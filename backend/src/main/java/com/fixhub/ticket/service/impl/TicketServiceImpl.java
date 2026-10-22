@@ -1,16 +1,19 @@
 package com.fixhub.ticket.service.impl;
 
 import com.fixhub.common.dto.PageResponse;
+import com.fixhub.ticket.dto.TicketCategoryCountDto;
 import com.fixhub.ticket.dto.TicketCreateRequestDto;
 import com.fixhub.ticket.dto.TicketHistoryResponseDto;
 import com.fixhub.ticket.dto.TicketListItemDto;
 import com.fixhub.ticket.dto.TicketResponseDto;
+import com.fixhub.ticket.dto.TicketSearchRequestDto;
 import com.fixhub.ticket.dto.TicketSummaryDto;
 import com.fixhub.ticket.dto.TicketUpdateRequestDto;
 import com.fixhub.ticket.entity.Ticket;
 import com.fixhub.ticket.entity.TicketCategory;
 import com.fixhub.ticket.entity.TicketHistory;
 import com.fixhub.ticket.entity.TicketPriority;
+import com.fixhub.ticket.entity.TicketStatus;
 import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.entity.TicketVisibility;
 import com.fixhub.ticket.mapper.TicketMapper;
@@ -18,6 +21,7 @@ import com.fixhub.ticket.mapper.TicketMapper.Names;
 import com.fixhub.ticket.repository.TicketCategoryRepository;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
+import com.fixhub.ticket.repository.TicketSpecifications;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketCategoryService;
 import com.fixhub.ticket.service.TicketHistoryService;
@@ -39,13 +43,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.Locale;
 
 @Service
 public class TicketServiceImpl implements TicketService {
@@ -144,6 +149,39 @@ public class TicketServiceImpl implements TicketService {
                     "Group must be PENDING or RESOLVED");
         };
         return toPage(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TicketListItemDto> search(TicketSearchRequestDto request, TicketActor actor) {
+        // group PENDING / RESOLVED is turned into the real status list here, rules live in one place
+        Collection<TicketStatus> groupStatuses = null;
+        String group = request.groupName();
+        if (group != null) {
+            groupStatuses = "PENDING".equals(group) ? rules.pendingStatuses() : rules.resolvedStatuses();
+        }
+
+        Page<Ticket> result = ticketRepository.findAll(
+                TicketSpecifications.build(request, actor, groupStatuses),
+                TicketSpecifications.pageable(request));
+        return toPage(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TicketCategoryCountDto> categoryCounts(TicketType type, TicketActor actor) {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : ticketRepository.countByCategoryVisible(type, actor.admin(), actor.id())) {
+            counts.put((Long) row[0], (Long) row[1]);
+        }
+
+        // every active category, even with 0 tickets. a disabled one only while tickets still use it
+        return categoryRepository.findByTicketTypeOrderByNameAsc(type).stream()
+                .filter(c -> c.isActive() || counts.containsKey(c.getId()))
+                .map(c -> new TicketCategoryCountDto(c.getId(), c.getName(), counts.getOrDefault(c.getId(), 0L)))
+                .sorted(Comparator.comparingLong(TicketCategoryCountDto::count).reversed()
+                        .thenComparing(TicketCategoryCountDto::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @Override

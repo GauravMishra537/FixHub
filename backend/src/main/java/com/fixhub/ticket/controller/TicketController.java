@@ -3,12 +3,15 @@ package com.fixhub.ticket.controller;
 import com.fixhub.common.auth.security.AuthUser;
 import com.fixhub.common.dto.ApiResponse;
 import com.fixhub.common.dto.PageResponse;
+import com.fixhub.ticket.dto.TicketCategoryCountDto;
 import com.fixhub.ticket.dto.TicketCreateRequestDto;
 import com.fixhub.ticket.dto.TicketHistoryResponseDto;
 import com.fixhub.ticket.dto.TicketListItemDto;
 import com.fixhub.ticket.dto.TicketResponseDto;
+import com.fixhub.ticket.dto.TicketSearchRequestDto;
 import com.fixhub.ticket.dto.TicketSummaryDto;
 import com.fixhub.ticket.dto.TicketUpdateRequestDto;
+import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketService;
 import jakarta.validation.Valid;
@@ -17,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -48,25 +52,36 @@ public class TicketController {
                 .body(ApiResponse.success("Ticket created", created));
     }
 
+    // all tickets this user may see. optional: q, type, status, categoryId, priority, departmentId,
+    // assigneeId, createdFrom, createdTo, mineOnly, group, sortBy, direction, page, size
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<TicketListItemDto>>> listVisible(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+    public ResponseEntity<ApiResponse<PageResponse<TicketListItemDto>>> list(
+            @Valid @ModelAttribute TicketSearchRequestDto request,
             @AuthenticationPrincipal AuthUser user,
             Authentication authentication) {
         return ResponseEntity.ok(ApiResponse.success(
-                ticketService.listVisible(actor(user, authentication), page, size)));
+                ticketService.search(request, actor(user, authentication))));
     }
 
+    // same filters, but only tickets this user raised
     @GetMapping("/mine")
     public ResponseEntity<ApiResponse<PageResponse<TicketListItemDto>>> listMine(
-            @RequestParam(required = false) String group,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @Valid @ModelAttribute TicketSearchRequestDto request,
+            @AuthenticationPrincipal AuthUser user,
+            Authentication authentication) {
+        request.setMineOnly(true);
+        return ResponseEntity.ok(ApiResponse.success(
+                ticketService.search(request, actor(user, authentication))));
+    }
+
+    // categories with ticket counts, for the filter chips
+    @GetMapping("/category-counts")
+    public ResponseEntity<ApiResponse<List<TicketCategoryCountDto>>> categoryCounts(
+            @RequestParam(defaultValue = "ISSUE") TicketType type,
             @AuthenticationPrincipal AuthUser user,
             Authentication authentication) {
         return ResponseEntity.ok(ApiResponse.success(
-                ticketService.listMine(actor(user, authentication), group, page, size)));
+                ticketService.categoryCounts(type, actor(user, authentication))));
     }
 
     @GetMapping("/summary")

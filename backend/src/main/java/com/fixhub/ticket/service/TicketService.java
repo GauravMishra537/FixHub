@@ -7,6 +7,9 @@ import com.fixhub.ticket.dto.TicketListItemDto;
 import com.fixhub.ticket.dto.TicketResponseDto;
 import com.fixhub.ticket.dto.TicketSummaryDto;
 import com.fixhub.ticket.dto.TicketUpdateRequestDto;
+import com.fixhub.ticket.dto.TicketSearchRequestDto;
+import com.fixhub.ticket.dto.TicketCategoryCountDto;
+import com.fixhub.ticket.entity.TicketType;
 
 import java.util.List;
 
@@ -22,9 +25,15 @@ public interface TicketService {
     // tickets raised by this user. group = PENDING, RESOLVED or empty for all of mine
     PageResponse<TicketListItemDto> listMine(TicketActor actor, String group, int page, int size);
 
+        // search, filter, sort and page. used by All Tickets and My Tickets
+    PageResponse<TicketListItemDto> search(TicketSearchRequestDto request, TicketActor actor);
+
     TicketSummaryDto summary(TicketActor actor);
 
     TicketResponseDto update(Long id, TicketUpdateRequestDto request, TicketActor actor);
 
     List<TicketHistoryResponseDto> history(Long id, TicketActor actor);
+
+        // categories of one type with how many visible tickets each has, busiest first
+    List<TicketCategoryCountDto> categoryCounts(TicketType type, TicketActor actor);
 }

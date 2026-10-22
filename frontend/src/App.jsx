@@ -22,6 +22,7 @@ import CategoriesPage from './pages/admin/CategoriesPage'
 import ComingSoonPage from './pages/ComingSoonPage'
 import CreateTicketPage from './pages/CreateTicketPage'
 import TicketDetailsPage from './pages/TicketDetailsPage'
+import AdminTicketsPage from './pages/admin/AdminTicketsPage'
 
 export function App() {
   return (
@@ -53,6 +54,7 @@ export function App() {
                 <Route path="admin/categories" element={<CategoriesPage />}/>
                 <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                 <Route path="admin/users" element={<UsersPage />} />
+                <Route path="admin/tickets" element={<AdminTicketsPage />} />
               </Route>
 
               <Route path="*" element={<NotFoundPage />} />

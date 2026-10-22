@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   Wrench,
@@ -13,7 +13,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { ticketCoreApi } from '../api/ticketCore'
+import useTicketFilters from '../hooks/useTicketFilters'
 import TicketTable from '../components/tickets/TicketTable'
+import TicketFilterBar from '../components/tickets/TicketFilterBar'
 
 const MODULES = [
   {
@@ -53,10 +55,24 @@ const MODULES = [
     text: 'Ask for a topic you want to learn and get it taught by a colleague.',
     action: 'Request Learning / Topic',
     icon: GraduationCap,
-    box: 'bg-amber-50 border-amber-200 hover:border-amber-400',
+    box: 'bg-amber-50 border-amber-100 hover:border-amber-400',
     iconBox: 'bg-amber-100 text-amber-600',
   },
 ]
+
+const VIEW_TITLES = {
+  MINE: 'My Tickets',
+  PENDING: 'My Pending Tickets',
+  RESOLVED: 'My Resolved Tickets',
+  TOTAL: 'All Tickets',
+}
+
+const VIEW_HINTS = {
+  MINE: 'Every ticket you raised. Click a row to see details.',
+  PENDING: 'Your tickets that are still being worked on.',
+  RESOLVED: 'Your tickets that are done.',
+  TOTAL: 'Every public ticket in the office plus your own. Click a row to see details.',
+}
 
 function GuestHome() {
   return (
@@ -96,63 +112,50 @@ function GuestHome() {
   )
 }
 
-
-const VIEW_TITLES = {
-  MINE: 'My Tickets',
-  PENDING: 'My Pending Tickets',
-  RESOLVED: 'My Resolved Tickets',
-  TOTAL: 'All Tickets',
-}
-
-const VIEW_HINTS = {
-  MINE: 'Every ticket you raised. Click a row to see details.',
-  PENDING: 'Your tickets that are still being worked on.',
-  RESOLVED: 'Your tickets that are done.',
-  TOTAL: 'Every public ticket in the office plus your own. Click a row to see details.',
-}
-
 function UserDashboard({ name }) {
   const firstName = (name || '').split(' ')[0]
 
-  const [summary, setSummary] = useState(null)
-  const [error, setError] = useState('')
+  // filters, sorting and page live in the URL, so refresh and shared links keep them
+  const { filters, apiParams, activeCount, update, clear, sortBy } = useTicketFilters()
 
-  // one list section at the bottom. the 4 boxes decide what it shows
-  const [view, setView] = useState('MINE')
-  const [page, setPage] = useState(0)
+  const [summary, setSummary] = useState(null)
+  const [categories, setCategories] = useState([])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const listRef = useRef(null)
 
   useEffect(() => {
     ticketCoreApi.summary().then(setSummary).catch((e) => setError(e.message))
+    ticketCoreApi.categoryCounts('ISSUE').then(setCategories).catch(() => setCategories([]))
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result =
-        view === 'TOTAL'
-          ? await ticketCoreApi.list(page, 10)
-          : await ticketCoreApi.mine(view === 'MINE' ? '' : view, page, 10)
-      setData(result)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [view, page])
-
+  // reload the list whenever a filter, the sort or the page changes.
+  // an older answer that arrives late is ignored
   useEffect(() => {
-    load()
-  }, [load])
+    let cancelled = false
+    setLoading(true)
+    ticketCoreApi
+      .search(apiParams)
+      .then((result) => {
+        if (!cancelled) {
+          setData(result)
+          setError('')
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [apiParams])
 
   const selectView = (key) => {
-    if (key !== view) {
-      setView(key)
-      setPage(0)
-      setData(null)
-    }
+    if (key !== filters.view) update({ view: key })
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -162,6 +165,13 @@ function UserDashboard({ name }) {
     { key: 'RESOLVED', label: 'Resolved', value: summary?.mineResolved, icon: CheckCircle2, card: 'bg-emerald-50 border-emerald-100', iconBox: 'bg-emerald-600' },
     { key: 'TOTAL', label: 'All Tickets', value: summary?.totalVisible, icon: Ticket, card: 'bg-blue-50 border-blue-100', iconBox: 'bg-blue-600' },
   ]
+
+  const emptyText =
+    activeCount > 0
+      ? 'No tickets match these filters.'
+      : filters.view === 'TOTAL'
+        ? 'No tickets yet.'
+        : 'No tickets here. Use a quick action above to raise one.'
 
   return (
     <div>
@@ -182,7 +192,7 @@ function UserDashboard({ name }) {
             type="button"
             onClick={() => selectView(key)}
             className={`rounded-2xl border p-4 flex items-center space-x-3 text-left transition hover:shadow-md ${card} ${
-              view === key ? 'ring-2 ring-blue-500' : ''
+              filters.view === key ? 'ring-2 ring-blue-500' : ''
             }`}
           >
             <span className={`w-11 h-11 rounded-xl text-white flex items-center justify-center ${iconBox}`}>
@@ -221,19 +231,34 @@ function UserDashboard({ name }) {
       {/* the one list section, at the bottom */}
       <section ref={listRef} className="mt-6 scroll-mt-24 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <div className="px-5 pt-4 pb-2">
-          <h2 className="font-semibold text-slate-900">{VIEW_TITLES[view]}</h2>
-          <p className="text-xs text-slate-500">{VIEW_HINTS[view]}</p>
+          <h2 className="font-semibold text-slate-900">{VIEW_TITLES[filters.view]}</h2>
+          <p className="text-xs text-slate-500">{VIEW_HINTS[filters.view]}</p>
         </div>
+
+        <TicketFilterBar
+          filters={filters}
+          update={update}
+          clear={clear}
+          activeCount={activeCount}
+          categories={categories}
+        />
+
         <TicketTable
           data={data}
           loading={loading}
-          onPage={setPage}
-          emptyText={view === 'TOTAL' ? 'No tickets yet.' : 'No tickets here. Use a quick action above to raise one.'}
+          emptyText={emptyText}
+          onPage={(page) => update({ page })}
+          sortBy={filters.sortBy}
+          direction={filters.direction}
+          onSort={sortBy}
+          size={filters.size}
+          onSize={(size) => update({ size })}
         />
       </section>
     </div>
   )
 }
+
 export default function HomePage() {
   const { user, isAuthenticated, isAdmin } = useAuth()
 
