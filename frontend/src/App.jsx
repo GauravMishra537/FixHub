@@ -23,6 +23,9 @@ import CreateTicketPage from './pages/CreateTicketPage'
 import TicketDetailsPage from './pages/TicketDetailsPage'
 import AdminTicketsPage from './pages/admin/AdminTicketsPage'
 import TicketsPage from './pages/TicketsPage'
+import UserPage from './pages/admin/UserPage'
+import RegistrationPage from './pages/admin/RegistrationPage'
+import TicketHistoryPage from './pages/admin/TicketHistoryPage'
 export function App() {
   return (
     <ErrorBoundary>
@@ -51,10 +54,13 @@ export function App() {
                 <Route path="admin" element={<AdminDashboardPage />} />
                 <Route path="admin/org-setup" element={<OrgSetupPage />} />
                 <Route path="admin/skill-review" element={<SkillReviewPage />} />
+                                <Route path="admin/ticket-history" element={<TicketHistoryPage />} />
                 <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                 <Route path="admin/users" element={<UsersPage />} />
+                <Route path="admin/users/:id" element={<UserPage />} />
+                <Route path="admin/requests/:id" element={<RegistrationPage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />
-                                <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
+                <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
                 <Route path="admin/rooms" element={<TicketsPage key="ROOM_BOOKING" type="ROOM_BOOKING" title="Room bookings" />} />
                 <Route path="admin/resources" element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
                 <Route path="admin/topics" element={<TicketsPage key="TOPIC_REQUEST" type="TOPIC_REQUEST" title="Topic requests" />} />

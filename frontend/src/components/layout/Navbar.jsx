@@ -28,9 +28,6 @@ const ADMIN_LINKS = [
   { to: '/admin/rooms', label: 'Rooms', icon: CalendarDays },
   { to: '/admin/resources', label: 'Resources', icon: Laptop },
   { to: '/admin/topics', label: 'Topics', icon: GraduationCap },
-  { to: '/admin/org-setup', label: 'Departments & skills', icon: Building2 },
-  { to: '/admin/skill-review', label: 'Skill review', icon: ClipboardCheck },
-  { to: '/admin/audit-logs', label: 'Audit logs', icon: ScrollText },
 ]
 
 const USER_LINKS = [
