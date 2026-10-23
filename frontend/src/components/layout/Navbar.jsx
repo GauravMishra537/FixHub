@@ -1,37 +1,34 @@
 import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import ThemeToggle from '../common/ThemeToggle'
 import {
   UserPlus,
   LogIn,
   LogOut,
   ShieldCheck,
-  UserCircle,
   LayoutDashboard,
   Building2,
   ClipboardCheck,
   ScrollText,
   Home,
   Users,
-  Tags,
   Ticket,
+  ListChecks,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
-    { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/tickets', label: 'Tickets', icon: Ticket },
   { to: '/admin/org-setup', label: 'Departments & skills', icon: Building2 },
-  { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/skill-review', label: 'Skill review', icon: ClipboardCheck },
   { to: '/admin/audit-logs', label: 'Audit logs', icon: ScrollText },
-  { to: '/account', label: 'Account', icon: UserCircle },
 ]
 
 const USER_LINKS = [
   { to: '/', label: 'Dashboard', icon: Home, end: true },
-  { to: '/account', label: 'My account', icon: UserCircle },
+  { to: '/tickets', label: 'All tickets', icon: ListChecks },
 ]
 
 function NavItem({ to, label, icon: Icon, end }) {
@@ -94,9 +91,19 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <ThemeToggle />
             {isAuthenticated ? (
               <>
-                <div className="flex items-center space-x-2">
+                {/* name and avatar open the account page */}
+                <NavLink
+                  to="/account"
+                  title="My account"
+                  className={({ isActive }) =>
+                    `flex items-center space-x-2 rounded-lg px-2 py-1 transition-colors ${
+                      isActive ? 'bg-white/20' : 'hover:bg-white/10'
+                    }`
+                  }
+                >
                   <div className="w-9 h-9 rounded-full bg-white text-blue-700 text-xs font-bold flex items-center justify-center">
                     {initials(user?.fullName)}
                   </div>
@@ -104,7 +111,7 @@ export function Navbar() {
                     <div className="text-xs font-semibold text-white">{user?.fullName}</div>
                     <div className="text-[10px] text-blue-200 font-mono uppercase">{user?.role}</div>
                   </div>
-                </div>
+                </NavLink>
                 <button
                   onClick={handleLogout}
                   className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 rounded-lg transition-colors border border-white/30"

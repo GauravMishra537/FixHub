@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { Building2, BadgeCheck, Plus, Trash2, Power, Loader2 } from 'lucide-react'
+import { Building2, BadgeCheck, Plus, Trash2, Loader2 } from 'lucide-react'
 import { orgApi } from '../../api/org'
 import PageHeader from '../../components/common/PageHeader'
 import Alert from '../../components/common/Alert'
+import ToggleStatusButton from '../../components/common/ToggleStatusButton'
 
 const INPUT =
   'flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -58,14 +59,8 @@ function ManageList({ icon: Icon, title, hint, items, loading, placeholder, inac
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  title={item.active ? 'Deactivate' : 'Activate'}
-                  onClick={() => onToggle(item)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-                >
-                  <Power className="w-4 h-4" />
-                </button>
+              <div className="flex items-center gap-2">
+                              <ToggleStatusButton active={item.active} onClick={() => onToggle(item)} />
                 <button
                   title="Delete"
                   onClick={() => onDelete(item)}

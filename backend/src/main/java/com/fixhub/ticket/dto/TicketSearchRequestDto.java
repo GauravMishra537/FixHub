@@ -56,6 +56,12 @@ public class TicketSearchRequestDto {
     // true: only tickets this user raised
     private Boolean mineOnly;
 
+        // true: only tickets assigned to this user ("Assigned to Me" column)
+    private Boolean assignedToMe;
+
+    // true: tickets this user raised OR is assigned to ("Resolved" column)
+    private Boolean involvedOnly;
+
     // PENDING or RESOLVED. empty means every status
     @Pattern(regexp = "(?i)^(PENDING|RESOLVED)?$", message = "Group must be PENDING or RESOLVED")
     private String group;

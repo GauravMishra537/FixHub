@@ -18,12 +18,11 @@ import OrgSetupPage from "./pages/admin/OrgSetupPage";
 import SkillReviewPage from "./pages/admin/SkillReviewPage";
 import AuditLogsPage from "./pages/admin/AuditLogsPage";
 import UsersPage from './pages/admin/UsersPage'
-import CategoriesPage from './pages/admin/CategoriesPage'
 import ComingSoonPage from './pages/ComingSoonPage'
 import CreateTicketPage from './pages/CreateTicketPage'
 import TicketDetailsPage from './pages/TicketDetailsPage'
 import AdminTicketsPage from './pages/admin/AdminTicketsPage'
-
+import TicketsPage from './pages/TicketsPage'
 export function App() {
   return (
     <ErrorBoundary>
@@ -40,6 +39,7 @@ export function App() {
               <Route path="account" element={<AccountPage />} />
               <Route path="issues" element={<ComingSoonPage title="Issue Tickets" />} />
               <Route path="issues/new" element={<CreateTicketPage />} />
+              <Route path="tickets" element={<TicketsPage />} />
               <Route path="tickets/:id" element={<TicketDetailsPage />} />
               <Route path="rooms" element={<ComingSoonPage title="Room Booking" />} />
               <Route path="resources" element={<ComingSoonPage title="Resource Requests" />} />
@@ -51,7 +51,6 @@ export function App() {
                 <Route path="admin" element={<AdminDashboardPage />} />
                 <Route path="admin/org-setup" element={<OrgSetupPage />} />
                 <Route path="admin/skill-review" element={<SkillReviewPage />} />
-                <Route path="admin/categories" element={<CategoriesPage />}/>
                 <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                 <Route path="admin/users" element={<UsersPage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />

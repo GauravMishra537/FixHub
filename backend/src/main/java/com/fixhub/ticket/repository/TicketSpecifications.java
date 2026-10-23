@@ -84,6 +84,14 @@ public final class TicketSpecifications {
             if (Boolean.TRUE.equals(req.getMineOnly())) {
                 p.add(cb.equal(root.get("authorId"), actor.id()));
             }
+            if (Boolean.TRUE.equals(req.getAssignedToMe())) {
+                p.add(cb.equal(root.get("assigneeId"), actor.id()));
+            }
+            if (Boolean.TRUE.equals(req.getInvolvedOnly())) {
+                p.add(cb.or(
+                        cb.equal(root.get("authorId"), actor.id()),
+                        cb.equal(root.get("assigneeId"), actor.id())));
+            }
 
             // 4. created date range. 'To' day is included, so it ends at the start of the next day
             if (req.getCreatedFrom() != null) {

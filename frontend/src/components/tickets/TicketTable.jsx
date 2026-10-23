@@ -20,12 +20,16 @@ const PAGE_SIZES = [5, 10, 20, 50]
 
 /**
  * data = { items, page, size, totalPages, totalElements }
+ * onOpen(id): row clicked. Without it the row opens the full details page.
+ * selectedId: the row whose side panel is open.
  * Sorting and page size are optional: pass sortBy, direction, onSort, size, onSize to turn them on.
  */
 export default function TicketTable({
   data,
   loading,
   onPage,
+  onOpen,
+  selectedId,
   emptyText = 'No tickets found',
   sortBy,
   direction,
@@ -35,6 +39,8 @@ export default function TicketTable({
 }) {
   const navigate = useNavigate()
   const items = data?.items || []
+
+  const open = (id) => (onOpen ? onOpen(id) : navigate(`/tickets/${id}`))
 
   const header = (col) => {
     if (!col.field || !onSort) return col.label
@@ -92,8 +98,10 @@ export default function TicketTable({
               items.map((t) => (
                 <tr
                   key={t.id}
-                  onClick={() => navigate(`/tickets/${t.id}`)}
-                  className="cursor-pointer border-b border-slate-50 hover:bg-blue-50/50"
+                  onClick={() => open(t.id)}
+                  className={`cursor-pointer border-b border-slate-50 hover:bg-blue-50/50 ${
+                    selectedId === t.id ? 'bg-blue-50' : ''
+                  }`}
                 >
                   <td className="whitespace-nowrap px-4 py-3 font-medium text-blue-700">{t.ticketNo}</td>
                   <td className="max-w-xs truncate px-4 py-3 text-slate-800">{t.title}</td>
@@ -125,7 +133,7 @@ export default function TicketTable({
                 <select
                   value={size}
                   onChange={(e) => onSize(Number(e.target.value))}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  className="rounded-lg border border-slate-300 py-1 pl-2 text-sm"
                 >
                   {PAGE_SIZES.map((n) => (
                     <option key={n} value={n}>
