@@ -54,6 +54,10 @@ export function App() {
                 <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                 <Route path="admin/users" element={<UsersPage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />
+                                <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
+                <Route path="admin/rooms" element={<TicketsPage key="ROOM_BOOKING" type="ROOM_BOOKING" title="Room bookings" />} />
+                <Route path="admin/resources" element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
+                <Route path="admin/topics" element={<TicketsPage key="TOPIC_REQUEST" type="TOPIC_REQUEST" title="Topic requests" />} />
               </Route>
 
               <Route path="*" element={<NotFoundPage />} />

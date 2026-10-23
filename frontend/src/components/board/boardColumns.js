@@ -21,7 +21,7 @@ export const MY_COLUMNS = [
   },
   {
     id: 'assigned',
-    title: 'Assigned to Me',
+    title: 'Working on',
     color: 'blue',
     params: { assignedToMe: true, status: ACTIVE_STATUSES },
     empty: 'No tickets are assigned to you.',

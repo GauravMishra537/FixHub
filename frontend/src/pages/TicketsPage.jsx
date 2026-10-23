@@ -5,8 +5,12 @@ import TicketTable from '../components/tickets/TicketTable'
 import TicketFilterBar from '../components/tickets/TicketFilterBar'
 import TicketDrawer from '../components/tickets/TicketDrawer'
 
-// every ticket this person may see, as simple rows. a row click opens the side panel
-export default function TicketsPage() {
+/**
+ * Tickets as simple rows. A row click opens the side panel.
+ * type: ISSUE, ROOM_BOOKING, RESOURCE_REQUEST or TOPIC_REQUEST. Leave it out for every type.
+ * title: the heading in the filter bar.
+ */
+export default function TicketsPage({ type, title = 'All tickets' }) {
   const { filters, activeCount, update, clear, sortBy } = useTicketFilters()
 
   const [categories, setCategories] = useState([])
@@ -18,11 +22,14 @@ export default function TicketsPage() {
   const [refresh, setRefresh] = useState(0)
 
   // this page always looks at all visible tickets, never only "mine"
-  const apiParams = useMemo(() => toApiParams({ ...filters, view: 'TOTAL' }), [filters])
+  const apiParams = useMemo(() => {
+    const params = toApiParams({ ...filters, view: 'TOTAL' })
+    return type ? { ...params, type } : params
+  }, [filters, type])
 
   useEffect(() => {
-    ticketCoreApi.categoryCounts('ISSUE').then(setCategories).catch(() => setCategories([]))
-  }, [refresh])
+    ticketCoreApi.categoryCounts(type || 'ISSUE').then(setCategories).catch(() => setCategories([]))
+  }, [type, refresh])
 
   useEffect(() => {
     let cancelled = false
@@ -54,7 +61,7 @@ export default function TicketsPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <TicketFilterBar
-          title="All tickets"
+          title={title}
           filters={filters}
           update={update}
           clear={clear}

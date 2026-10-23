@@ -15,12 +15,19 @@ import {
   Users,
   Ticket,
   ListChecks,
+  Wrench,
+  CalendarDays,
+  Laptop,
+  GraduationCap,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
-  { to: '/admin/tickets', label: 'Tickets', icon: Ticket },
+  { to: '/admin/issues', label: 'Issues', icon: Wrench },
+  { to: '/admin/rooms', label: 'Rooms', icon: CalendarDays },
+  { to: '/admin/resources', label: 'Resources', icon: Laptop },
+  { to: '/admin/topics', label: 'Topics', icon: GraduationCap },
   { to: '/admin/org-setup', label: 'Departments & skills', icon: Building2 },
   { to: '/admin/skill-review', label: 'Skill review', icon: ClipboardCheck },
   { to: '/admin/audit-logs', label: 'Audit logs', icon: ScrollText },

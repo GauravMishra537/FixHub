@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ArrowUpDown, CalendarDays, Flag, ListChecks, Search, Tag, X } from 'lucide-react'
+import { ArrowUpDown, CalendarDays, Flag, ListChecks, Search, Tag } from 'lucide-react'
 import FilterMenu from '../common/FilterMenu'
 
 const STATUS_OPTIONS = [
@@ -42,6 +42,7 @@ function dateSummary(from, to) {
  * Row 2: all filters as buttons in one row (wraps on a small screen).
  * filters, update, clear, activeCount come from useTicketFilters.
  * categories = [{ categoryId, name, count }] from GET /api/tickets/category-counts
+ * extra: more filter buttons from the page, shown after Sort.
  */
 export default function TicketFilterBar({
   filters,
@@ -52,6 +53,7 @@ export default function TicketFilterBar({
   title,
   showStatus = true,
   showSort = false,
+  extra = null,
 }) {
   // the box shows what the user types at once. the URL and the list follow 400 ms after the last key
   const [text, setText] = useState(filters.q)
@@ -165,13 +167,16 @@ export default function TicketFilterBar({
           />
         )}
 
+        {/* extra filter buttons from the page, for example Skill on the admin board */}
+        {extra}
+
         {activeCount > 0 && (
           <button
             type="button"
             onClick={clear}
-            className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+            className="px-2 py-2 text-sm font-medium text-blue-600 hover:underline"
           >
-            <X className="mr-1 h-3.5 w-3.5" /> Clear ({activeCount})
+            Clear
           </button>
         )}
       </div>
