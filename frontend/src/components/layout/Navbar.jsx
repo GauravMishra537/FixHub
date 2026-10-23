@@ -13,12 +13,15 @@ import {
   ScrollText,
   Home,
   Users,
-  Tags
+  Tags,
+  Ticket,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
+    { to: '/admin/users', label: 'Users', icon: Users },
+  { to: '/admin/tickets', label: 'Tickets', icon: Ticket },
   { to: '/admin/org-setup', label: 'Departments & skills', icon: Building2 },
   { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/skill-review', label: 'Skill review', icon: ClipboardCheck },

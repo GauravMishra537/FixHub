@@ -14,6 +14,7 @@ import {
   DoorOpen,
   Laptop,
   GitBranch,
+  Ticket
 } from 'lucide-react';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import Modal from '../components/common/Modal';
@@ -21,12 +22,14 @@ import Alert from '../components/common/Alert';
 import ProfileForm from '../components/admin/ProfileForm';
 import SkillStatusBadge from '../components/common/SkillStatusBadge';
 import { orgApi } from '../api/org';
+import { ticketCoreApi } from '../api/ticketCore';
 import { getRequests, getUsers, rejectRequest } from '../api/admin';
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : '-');
 
 const SHORTCUTS = [
   { to: '/admin/users', label: 'Users', icon: Users, tone: 'text-blue-600 bg-blue-50' },
+    { to: '/admin/tickets', label: 'Tickets', icon: Ticket, tone: 'text-sky-600 bg-sky-50' },
   { to: '/admin/org-setup', label: 'Departments & Skills', icon: Building2, tone: 'text-violet-600 bg-violet-50' },
   { to: '/admin/skill-review', label: 'Skill Review', icon: ClipboardCheck, tone: 'text-emerald-600 bg-emerald-50' },
   { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, tone: 'text-amber-600 bg-amber-50' },
@@ -44,13 +47,21 @@ const CARD_TITLES = {
   rejected: 'Rejected requests',
   resolved: 'Resolved requests',
 };
-
+// where the "View tickets" link goes for each box. Rejected has no tickets yet
+const TICKET_LINKS = {
+  all: '/admin/tickets',
+  pending:
+    '/admin/tickets?status=NEW&status=OPEN&status=ASSIGNED&status=IN_PROGRESS&status=ON_HOLD&status=REOPENED',
+  rejected: null,
+  resolved: '/admin/tickets?status=RESOLVED&status=CLOSED',
+};
 export default function AdminDashboardPage() {
   const [requests, setRequests] = useState([]); // registration requests
   const [users, setUsers] = useState([]);
   const [skillPending, setSkillPending] = useState([]);
   const [skillApproved, setSkillApproved] = useState([]);
   const [skillRejected, setSkillRejected] = useState([]);
+  const [ticketCounts, setTicketCounts] = useState({ all: 0, pending: 0, resolved: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -66,13 +77,25 @@ export default function AdminDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const [reqs, usrs, sp, sa, sr] = await Promise.all([
+           // size 1 is enough, only the total number is used. a failure here must not break the page
+      const ticketCount = (params) =>
+        ticketCoreApi
+          .search({ size: 1, ...params })
+          .then((r) => r.totalElements)
+          .catch(() => 0);
+
+      const [reqs, usrs, sp, sa, sr, tAll, tPending, tResolved] = await Promise.all([
         getRequests(),
         getUsers(),
         orgApi.skillRequests('PENDING'),
         orgApi.skillRequests('APPROVED'),
         orgApi.skillRequests('REJECTED'),
+        ticketCount({}),
+        ticketCount({ group: 'PENDING' }),
+        ticketCount({ group: 'RESOLVED' }),
       ]);
+      setTicketCounts({ all: tAll, pending: tPending, resolved: tResolved });
+      setRequests(reqs || []);
       setRequests(reqs || []);
       setUsers(usrs || []);
       setSkillPending(sp || []);
@@ -94,10 +117,17 @@ export default function AdminDashboardPage() {
   // every non-admin account was approved by an admin
   const approvedUsers = useMemo(() => users.filter((u) => u.role !== 'ADMIN').length, [users]);
 
-  const pendingCount = pendingUsers.length + skillPending.length;
+  const pendingCount = pendingUsers.length + skillPending.length + ticketCounts.pending;
   const rejectedCount = rejectedUsers.length + skillRejected.length;
-  const resolvedCount = approvedUsers + skillApproved.length;
-  const allCount = pendingCount + rejectedCount + resolvedCount;
+  const resolvedCount = approvedUsers + skillApproved.length + ticketCounts.resolved;
+  const allCount =
+    pendingUsers.length +
+    rejectedUsers.length +
+    approvedUsers +
+    skillPending.length +
+    skillRejected.length +
+    skillApproved.length +
+    ticketCounts.all;
     // one flat list of everything that needed (or needs) an admin decision
   const items = useMemo(() => {
     const list = [];
@@ -194,7 +224,7 @@ export default function AdminDashboardPage() {
       iconBox: 'bg-blue-600',
       sub: `Users ${pendingUsers.length + rejectedUsers.length + approvedUsers} · Skills ${
         skillPending.length + skillRejected.length + skillApproved.length
-      } · Tickets 0`,
+      } · Tickets ${ticketCounts.all}`,
     },
     {
       label: 'Pending Requests',
@@ -202,7 +232,7 @@ export default function AdminDashboardPage() {
       icon: Clock,
       card: 'bg-amber-50 border-amber-100',
       iconBox: 'bg-amber-500',
-      sub: `Users ${pendingUsers.length} · Skills ${skillPending.length} · Tickets 0`,
+      sub: `Users ${pendingUsers.length} · Skills ${skillPending.length} · Tickets ${ticketCounts.pending}`,
     },
     {
       label: 'Rejected Requests',
@@ -218,7 +248,7 @@ export default function AdminDashboardPage() {
       icon: CheckCircle2,
       card: 'bg-emerald-50 border-emerald-100',
       iconBox: 'bg-emerald-600',
-      sub: `Users ${approvedUsers} · Skills ${skillApproved.length} · Tickets 0`,
+      sub: `Users ${approvedUsers} · Skills ${skillApproved.length} · Tickets ${ticketCounts.resolved}`,
     },
   ];
 
