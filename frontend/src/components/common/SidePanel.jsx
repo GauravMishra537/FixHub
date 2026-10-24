@@ -2,10 +2,6 @@ import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ExternalLink, X } from 'lucide-react'
 
-/**
- * Right-side panel shell. Esc or a click outside closes it.
- * fullPageTo: if given, shows an "Open full page" link.
- */
 export default function SidePanel({ open, title, subtitle, fullPageTo, onClose, children }) {
   useEffect(() => {
     if (!open) return undefined
@@ -20,14 +16,16 @@ export default function SidePanel({ open, title, subtitle, fullPageTo, onClose, 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Background dim overlay layout layer */}
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} aria-hidden="true" />
 
+      {/* Main interactive drawer container */}
       <aside
         role="dialog"
         aria-label={title}
-        className="relative flex h-full w-full max-w-xl flex-col border-l border-slate-200 bg-slate-50 shadow-2xl"
+        className="fixed bottom-0 right-0 top-0 z-50 flex h-screen w-full max-w-xl flex-col bg-white shadow-2xl"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
+        <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-slate-900">{title}</h2>
             {subtitle && <p className="truncate text-xs text-slate-500">{subtitle}</p>}
@@ -52,7 +50,8 @@ export default function SidePanel({ open, title, subtitle, fullPageTo, onClose, 
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+        {/* Interior layout body container */}
+        <div className="flex-1 overflow-y-auto p-6">{children}</div>
       </aside>
     </div>
   )
