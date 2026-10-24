@@ -125,3 +125,6 @@ select:not([multiple]) {
 .dark .text-purple-600, .dark .text-purple-700, .dark .text-purple-800 { color: #d8b4fe; }
 .dark .border-purple-100, .dark .border-purple-200, .dark .border-purple-300 { border-color: rgb(168 85 247 / 0.35); }
 .dark .hover\:border-purple-400:hover { border-color: rgb(168 85 247 / 0.7); } .dark .hover\:bg-purple-50:hover { background-color: rgb(168 85 247 / 0.18); } .dark .hover\:bg-purple-100:hover { background-color: rgb(168 85 247 / 0.26); }
+/* inline edit boxes in dark mode */
+.dark .border-blue-400 { border-color: rgb(59 130 246 / 0.7); }
+.dark .ring-blue-100 { --tw-ring-color: rgb(59 130 246 / 0.3); }

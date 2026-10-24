@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ArrowUpDown, CalendarDays, Flag, ListChecks, Search, Tag } from 'lucide-react'
 import FilterMenu from '../common/FilterMenu'
+import DatePicker from '../common/DatePicker'
 
 const STATUS_OPTIONS = [
   { value: 'NEW', label: 'New' },
@@ -27,14 +28,18 @@ const SORT_OPTIONS = [
   { value: 'updatedOn:desc', label: 'Recently updated' },
 ]
 
-const dateInput =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 function dateSummary(from, to) {
   if (from && to) return `${from} to ${to}`
   if (from) return `from ${from}`
   if (to) return `until ${to}`
   return ''
+}
+
+// today as YYYY-MM-DD in the local time zone. Tickets cannot be filtered by a future date
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 /**
@@ -129,26 +134,27 @@ export default function TicketFilterBar({
           summary={dateSummary(filters.createdFrom, filters.createdTo)}
         >
           <div className="w-56 space-y-3">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              From
-              <input
-                type="date"
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">From</div>
+              <DatePicker
+                className="w-full"
+                placeholder="Any date"
                 value={filters.createdFrom}
-                max={filters.createdTo || undefined}
-                onChange={(e) => update({ createdFrom: e.target.value })}
-                className={`${dateInput} mt-1`}
+                max={filters.createdTo || todayIso()}
+                onChange={(v) => update({ createdFrom: v })}
               />
-            </label>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              To
-              <input
-                type="date"
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">To</div>
+              <DatePicker
+                className="w-full"
+                placeholder="Any date"
                 value={filters.createdTo}
                 min={filters.createdFrom || undefined}
-                onChange={(e) => update({ createdTo: e.target.value })}
-                className={`${dateInput} mt-1`}
+                max={todayIso()}
+                onChange={(v) => update({ createdTo: v })}
               />
-            </label>
+            </div>
           </div>
         </FilterMenu>
 

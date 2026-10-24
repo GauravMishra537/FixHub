@@ -39,6 +39,10 @@ public class TicketRules {
     private static final Set<TicketStatus> RESOLVED = Set.of(
             TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.RETURNED);
 
+    // finished tickets: nobody changes them any more
+    private static final Set<TicketStatus> FINISHED = Set.of(
+            TicketStatus.CLOSED, TicketStatus.CANCELLED, TicketStatus.REJECTED, TicketStatus.RETURNED);
+
     static {
         INITIAL_STATUS.put(TicketType.ISSUE, TicketStatus.NEW);
         INITIAL_STATUS.put(TicketType.ROOM_BOOKING, TicketStatus.PENDING_APPROVAL);
@@ -79,7 +83,7 @@ public class TicketRules {
 
     // ---------- edit ----------
 
-    /** Only the requester, only while the status allows it. Admin does not edit content. */
+    /** Only the requester, only while the status allows it. */
     public boolean canEdit(Ticket ticket, Long viewerId) {
         return editDeniedReason(ticket, viewerId) == null;
     }
@@ -95,6 +99,13 @@ public class TicketRules {
                     + ticket.getStatus();
         }
         return null;
+    }
+
+    // ---------- admin triage ----------
+
+    /** An admin may change category and priority of any ticket that is not finished. */
+    public boolean canTriage(Ticket ticket, boolean admin) {
+        return admin && !FINISHED.contains(ticket.getStatus());
     }
 
     // ---------- dashboard groups ----------

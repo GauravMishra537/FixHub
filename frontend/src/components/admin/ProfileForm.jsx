@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { orgApi } from '../../api/org'
 import Alert from '../common/Alert'
-
+import SelectMenu from '../common/SelectMenu'
 const FIELD =
   'w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 
@@ -68,14 +68,12 @@ export default function ProfileForm({ initial = {}, lockedSkillIds = [], submitL
 
       <div>
         <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-        <select className={FIELD} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-          <option value="">Select department</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
+          <SelectMenu
+          value={departmentId}
+          onChange={setDepartmentId}
+          placeholder="Select department"
+          options={[{ value: '', label: 'No department' }, ...departments.map((d) => ({ value: d.id, label: d.name }))]}
+        />
       </div>
 
       <div>

@@ -43,4 +43,7 @@ public class TicketResponseDto {
 
     // true when the viewer is the requester and the status still allows edits
     private boolean canEdit;
+
+    // true when the viewer is an admin and the ticket is not finished: category and priority only
+    private boolean canTriage;
 }

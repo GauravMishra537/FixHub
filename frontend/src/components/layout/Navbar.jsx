@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Laptop,
   GraduationCap,
+  Bell,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
@@ -147,13 +148,24 @@ export function Navbar() {
       </div>
 
       {isAuthenticated && (
-        <nav className="bg-blue-800">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center gap-1 overflow-x-auto">
-            {links.map((l) => (
-              <NavItem key={l.to} {...l} />
-            ))}
-          </div>
-        </nav>
+      <nav className="bg-blue-800">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between overflow-x-auto">
+    <div className="flex items-center gap-1">
+      {links.map((l) => (
+        <NavItem key={l.to} {...l} />
+      ))}
+    </div>
+    <button
+      type="button"
+      title="Notifications"
+      aria-label="Notifications"
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white transition-colors hover:bg-white/10"
+    >
+      <Bell className="h-4 w-4" />
+    </button>
+      </div>
+      </nav>
+
       )}
     </header>
   )

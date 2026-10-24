@@ -168,21 +168,6 @@ export default function AdminDashboardPage() {
         busySkillId={busySkillId}
       />
 
-      {/* space kept for the notification table, UI only for now */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center font-semibold text-slate-900">
-            <Bell className="mr-2 h-4 w-4 text-slate-500" /> Notifications
-          </h2>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-            Coming soon
-          </span>
-        </div>
-        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-300 text-sm text-slate-400">
-          Notifications will appear here
-        </div>
-      </section>
-
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-4 font-semibold text-slate-900">Management Shortcuts</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-5">

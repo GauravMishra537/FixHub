@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { ticketCoreApi } from '../api/ticketCore'
 import CategoryCombobox from '../components/tickets/CategoryCombobox'
+import SelectMenu from '../components/common/SelectMenu'
+import { PRIORITY_OPTIONS } from '../utils/options'
 
 export default function CreateTicketPage() {
   const navigate = useNavigate()
@@ -72,16 +74,7 @@ export default function CreateTicketPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
-            </select>
+            <SelectMenu value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
           </div>
 
           <div>

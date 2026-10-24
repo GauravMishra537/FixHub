@@ -216,13 +216,16 @@ public class TicketServiceImpl implements TicketService {
     public TicketResponseDto update(Long id, TicketUpdateRequestDto request, TicketActor actor) {
         Ticket ticket = findViewable(id, actor);
 
-        if (!actor.id().equals(ticket.getAuthorId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Only the person who raised this ticket can edit it");
-        }
-        String blocked = rules.editDeniedReason(ticket, actor.id());
-        if (blocked != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, blocked);
+        boolean author = actor.id().equals(ticket.getAuthorId());
+        // the person who raised it edits everything while the status allows it
+        boolean fullEdit = author && rules.editDeniedReason(ticket, actor.id()) == null;
+        // an admin changes only category and priority
+        boolean triageOnly = !fullEdit && rules.canTriage(ticket, actor.admin());
+
+        if (!fullEdit && !triageOnly) {
+            throw new ResponseStatusException(
+                    author ? HttpStatus.CONFLICT : HttpStatus.FORBIDDEN,
+                    rules.editDeniedReason(ticket, actor.id()));
         }
         // the user edited an old copy of the page
         if (!Objects.equals(request.getVersion(), ticket.getVersion())) {
@@ -230,8 +233,10 @@ public class TicketServiceImpl implements TicketService {
                     "This ticket was changed by someone else. Reload the page and try again");
         }
 
-        String title = request.getTitle().trim();
-        String description = clean(request.getDescription());
+        // for an admin the title, description and visibility from the request are ignored
+        String title = fullEdit ? request.getTitle().trim() : ticket.getTitle();
+        String description = fullEdit ? clean(request.getDescription()) : ticket.getDescription();
+        TicketVisibility visibility = fullEdit ? request.getVisibility() : ticket.getVisibility();
         Long newCategoryId = resolveCategoryId(ticket.getType(), request.getCategoryName());
 
         // one history row per field that really changed (equal values write nothing)
@@ -243,13 +248,13 @@ public class TicketServiceImpl implements TicketService {
         historyService.recordFieldChange(id, actorId, "priority",
                 ticket.getPriority().name(), request.getPriority().name());
         historyService.recordFieldChange(id, actorId, "visibility",
-                ticket.getVisibility().name(), request.getVisibility().name());
+                ticket.getVisibility().name(), visibility.name());
 
         ticket.setTitle(title);
         ticket.setDescription(description);
         ticket.setCategoryId(newCategoryId);
         ticket.setPriority(request.getPriority());
-        ticket.setVisibility(request.getVisibility());
+        ticket.setVisibility(visibility);
 
         // flush now so the new version number is in the answer
         Ticket saved = ticketRepository.saveAndFlush(ticket);
@@ -319,7 +324,9 @@ public class TicketServiceImpl implements TicketService {
 
     private TicketResponseDto toResponse(Ticket ticket, TicketActor actor) {
         Names names = loadNames(List.of(ticket));
-        return mapper.toResponse(ticket, names, rules.canEdit(ticket, actor.id()));
+        TicketResponseDto dto = mapper.toResponse(ticket, names, rules.canEdit(ticket, actor.id()));
+        dto.setCanTriage(rules.canTriage(ticket, actor.admin()));
+        return dto;
     }
 
     private Map<Long, String> userNames(Collection<Long> ids) {
