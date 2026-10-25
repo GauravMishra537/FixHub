@@ -42,6 +42,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.fixhub.notification.entity.NotificationType;
+import com.fixhub.notification.service.NotificationService;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -68,6 +70,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketNumberService numberService;
     private final TicketHistoryService historyService;
     private final RoutingService routingService;
+    private final NotificationService notificationService;
     private final TicketRules rules;
     private final TicketMapper mapper;
 
@@ -80,6 +83,7 @@ public class TicketServiceImpl implements TicketService {
                              TicketNumberService numberService,
                              TicketHistoryService historyService,
                              RoutingService routingService,
+                                NotificationService notificationService,
                              TicketRules rules,
                              TicketMapper mapper) {
         this.ticketRepository = ticketRepository;
@@ -91,6 +95,7 @@ public class TicketServiceImpl implements TicketService {
         this.numberService = numberService;
         this.historyService = historyService;
         this.routingService = routingService;
+        this.notificationService = notificationService;
         this.rules = rules;
         this.mapper = mapper;
     }
@@ -127,6 +132,7 @@ public class TicketServiceImpl implements TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
         historyService.recordCreated(saved.getId(), actor.id());
+        notifyDepartment(saved, actor);
         return toResponse(saved, actor);
     }
 
@@ -293,6 +299,20 @@ public class TicketServiceImpl implements TicketService {
     }
 
     // ---------- helpers ----------
+
+        // tell every employee of the routed department, except the author. private tickets stay quiet
+    private void notifyDepartment(Ticket ticket, TicketActor actor) {
+        if (ticket.getDepartmentId() == null || ticket.getVisibility() == TicketVisibility.PRIVATE) {
+            return;
+        }
+        List<Long> people = userRepository.findIdsByDepartmentId(ticket.getDepartmentId()).stream()
+                .filter(id -> !id.equals(actor.id()))
+                .toList();
+
+        String message = "New ticket " + ticket.getTicketNo() + ": " + ticket.getTitle()
+                + (ticket.isRequiresApproval() ? " (admin approves the claim)" : "");
+        notificationService.notifyUsers(people, NotificationType.TICKET_ROUTED, ticket.getId(), message);
+    }
 
     private Ticket findTicket(Long id) {
         return ticketRepository.findById(id)

@@ -2,24 +2,20 @@ import React from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import ThemeToggle from '../common/ThemeToggle'
+import NotificationBell from './NotificationBell'
 import {
   UserPlus,
   LogIn,
   LogOut,
   ShieldCheck,
   LayoutDashboard,
-  Building2,
-  ClipboardCheck,
-  ScrollText,
   Home,
   Users,
-  Ticket,
   ListChecks,
   Wrench,
   CalendarDays,
   Laptop,
   GraduationCap,
-  Bell,
 } from 'lucide-react'
 
 const ADMIN_LINKS = [
@@ -155,14 +151,7 @@ export function Navbar() {
         <NavItem key={l.to} {...l} />
       ))}
     </div>
-    <button
-      type="button"
-      title="Notifications"
-      aria-label="Notifications"
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/30 text-white transition-colors hover:bg-white/10"
-    >
-      <Bell className="h-4 w-4" />
-    </button>
+        <NotificationBell />
       </div>
       </nav>
 

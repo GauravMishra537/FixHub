@@ -31,4 +31,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<String> findDeletedPasswordHash(@Param("email") String email);
 
     Optional<User> findByPasswordResetTokenHash(String passwordResetTokenHash);
+
+     @Query("select u.id from User u where u.departmentId = :departmentId")
+    List<Long> findIdsByDepartmentId(@Param("departmentId") Long departmentId);
 }
