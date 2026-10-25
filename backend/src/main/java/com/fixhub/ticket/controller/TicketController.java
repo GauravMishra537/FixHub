@@ -73,6 +73,16 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(
                 ticketService.search(request, actor(user, authentication))));
     }
+    
+    @GetMapping("/department-queue")
+    public ResponseEntity<ApiResponse<PageResponse<TicketListItemDto>>> departmentQueue(
+            @AuthenticationPrincipal AuthUser user,
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                ticketService.departmentQueue(actor(user, authentication), page, size)));
+    }
 
     // categories with ticket counts, for the filter chips
     @GetMapping("/category-counts")

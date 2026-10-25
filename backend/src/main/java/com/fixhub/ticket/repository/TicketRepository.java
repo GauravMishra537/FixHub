@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.fixhub.ticket.entity.TicketType;
+import com.fixhub.ticket.entity.TicketVisibility;
+
 import java.util.List;
 
 import java.util.Collection;
@@ -58,6 +60,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
                                               Collection<TicketStatus> statuses,
                                               Pageable pageable);
 
+        Page<Ticket> findByDepartmentIdAndAssigneeIdIsNullAndStatusInAndVisibility(
+            Long departmentId, Collection<TicketStatus> statuses, TicketVisibility visibility, Pageable pageable);
+            
     long countByAuthorId(Long authorId);
 
     long countByAuthorIdAndStatusIn(Long authorId, Collection<TicketStatus> statuses);

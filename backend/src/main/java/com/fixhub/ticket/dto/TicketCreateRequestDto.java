@@ -32,4 +32,7 @@ public class TicketCreateRequestDto {
 
     // optional, default PUBLIC
     private TicketVisibility visibility;
+
+    // the requester asks for an admin to approve the ticket before work starts
+    private Boolean requiresApproval;
 }

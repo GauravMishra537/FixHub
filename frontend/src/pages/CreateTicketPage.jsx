@@ -15,6 +15,7 @@ export default function CreateTicketPage() {
   const [isPrivate, setIsPrivate] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [requiresApproval, setRequiresApproval] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -31,10 +32,12 @@ export default function CreateTicketPage() {
         categoryName: category.trim(),
         priority,
         visibility: isPrivate ? 'PRIVATE' : 'PUBLIC',
+        requiresApproval,
       })
       navigate(`/tickets/${created.id}`, { replace: true })
     } catch (err) {
       setError(err.message)
+      setSaving(false)
       setSaving(false)
     }
   }
@@ -92,6 +95,18 @@ export default function CreateTicketPage() {
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
             Private (only me, the assignee and admin can see it)
+          </label>
+
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={requiresApproval}
+              onChange={(e) => setRequiresApproval(e.target.checked)}
+            />
+            <span>
+              Needs admin approval
+            </span>
           </label>
 
           <div className="flex gap-3 pt-2">

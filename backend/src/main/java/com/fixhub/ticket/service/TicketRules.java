@@ -117,4 +117,9 @@ public class TicketRules {
     public Set<TicketStatus> resolvedStatuses() {
         return RESOLVED;
     }
+
+    // statuses a department can pick work from
+    public Set<TicketStatus> queueStatuses() {
+        return Set.of(TicketStatus.NEW, TicketStatus.OPEN);
+    }
 }

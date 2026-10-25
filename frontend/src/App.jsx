@@ -26,6 +26,7 @@ import TicketsPage from './pages/TicketsPage'
 import UserPage from './pages/admin/UserPage'
 import RegistrationPage from './pages/admin/RegistrationPage'
 import TicketHistoryPage from './pages/admin/TicketHistoryPage'
+import RoutingRulesPage from './pages/admin/RoutingRulesPage'
 export function App() {
   return (
     <ErrorBoundary>
@@ -54,7 +55,8 @@ export function App() {
                 <Route path="admin" element={<AdminDashboardPage />} />
                 <Route path="admin/org-setup" element={<OrgSetupPage />} />
                 <Route path="admin/skill-review" element={<SkillReviewPage />} />
-                                <Route path="admin/ticket-history" element={<TicketHistoryPage />} />
+                <Route path="admin/routing-rules" element={<RoutingRulesPage />} />
+                <Route path="admin/ticket-history" element={<TicketHistoryPage />} />
                 <Route path="admin/audit-logs" element={<AuditLogsPage />} />
                 <Route path="admin/users" element={<UsersPage />} />
                 <Route path="admin/users/:id" element={<UserPage />} />

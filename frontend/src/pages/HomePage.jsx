@@ -4,7 +4,7 @@ import { Wrench, CalendarDays, Laptop, GraduationCap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import TicketTypeTiles from '../components/tickets/TicketTypeTiles'
 import UserBoard from '../components/board/UserBoard'
-
+import DepartmentQueue from '../components/board/DepartmentQueue'
 // used by the guest page only
 const MODULES = [
   {
@@ -84,6 +84,7 @@ function UserDashboard() {
     <div className="space-y-6">
       <TicketTypeTiles />
       <UserBoard />
+      <DepartmentQueue />
     </div>
   )
 }

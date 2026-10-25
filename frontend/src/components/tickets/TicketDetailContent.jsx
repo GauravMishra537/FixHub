@@ -10,6 +10,7 @@ import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
 import { PRIORITY_OPTIONS, VISIBILITY_OPTIONS } from '../../utils/options'
 
+
 function Field({ label, children }) {
   return (
     <div>
@@ -158,6 +159,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         </div>
       )}
       {notice && !dirty && <Alert type="success">{notice}</Alert>}
+
 
       <div className="-ml-2">
         <EditableText

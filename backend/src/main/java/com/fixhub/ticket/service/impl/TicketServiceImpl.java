@@ -22,6 +22,7 @@ import com.fixhub.ticket.repository.TicketCategoryRepository;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
 import com.fixhub.ticket.repository.TicketSpecifications;
+import com.fixhub.ticket.service.RoutingService;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketCategoryService;
 import com.fixhub.ticket.service.TicketHistoryService;
@@ -66,6 +67,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketCategoryService categoryService;
     private final TicketNumberService numberService;
     private final TicketHistoryService historyService;
+    private final RoutingService routingService;
     private final TicketRules rules;
     private final TicketMapper mapper;
 
@@ -77,6 +79,7 @@ public class TicketServiceImpl implements TicketService {
                              TicketCategoryService categoryService,
                              TicketNumberService numberService,
                              TicketHistoryService historyService,
+                             RoutingService routingService,
                              TicketRules rules,
                              TicketMapper mapper) {
         this.ticketRepository = ticketRepository;
@@ -87,6 +90,7 @@ public class TicketServiceImpl implements TicketService {
         this.categoryService = categoryService;
         this.numberService = numberService;
         this.historyService = historyService;
+        this.routingService = routingService;
         this.rules = rules;
         this.mapper = mapper;
     }
@@ -106,11 +110,19 @@ public class TicketServiceImpl implements TicketService {
         ticket.setTitle(request.getTitle().trim());
         ticket.setDescription(clean(request.getDescription()));
         ticket.setStatus(rules.initialStatus(type));
+
+        // the tick counts for issues only. it means: a claim on this ticket needs admin approval
+        boolean approval = type == TicketType.ISSUE && Boolean.TRUE.equals(request.getRequiresApproval());
+        ticket.setRequiresApproval(approval);
+
         ticket.setPriority(request.getPriority() == null ? TicketPriority.MEDIUM : request.getPriority());
         ticket.setVisibility(request.getVisibility() == null ? TicketVisibility.PUBLIC : request.getVisibility());
         ticket.setAuthorId(actor.id());
-        ticket.setCategoryId(resolveCategoryId(type, request.getCategoryName()));
-        // department stays empty. routing rules fill it in Commit 15
+
+        Long categoryId = resolveCategoryId(type, request.getCategoryName());
+        ticket.setCategoryId(categoryId);
+        // department comes from the routing rules. no rule = stays empty
+        ticket.setDepartmentId(routingService.resolveDepartmentId(type, categoryId).orElse(null));
         ticket.setTicketNo(numberService.nextTicketNo());
 
         Ticket saved = ticketRepository.save(ticket);
@@ -149,6 +161,25 @@ public class TicketServiceImpl implements TicketService {
                     "Group must be PENDING or RESOLVED");
         };
         return toPage(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TicketListItemDto> departmentQueue(TicketActor actor, int page, int size) {
+        Long departmentId = userRepository.findById(actor.id()).map(User::getDepartmentId).orElse(null);
+        Pageable base = pageable(page, size);
+
+        // no department yet: nothing to show
+        if (departmentId == null) {
+            return toPage(Page.empty(base));
+        }
+
+        // oldest first, so the longest waiting ticket is on top
+        Pageable oldestFirst = PageRequest.of(base.getPageNumber(), base.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "createdOn").and(Sort.by(Sort.Direction.ASC, "id")));
+
+        return toPage(ticketRepository.findByDepartmentIdAndAssigneeIdIsNullAndStatusInAndVisibility(
+                departmentId, rules.queueStatuses(), TicketVisibility.PUBLIC, oldestFirst));
     }
 
     @Override

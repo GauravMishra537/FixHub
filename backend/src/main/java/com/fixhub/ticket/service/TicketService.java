@@ -28,9 +28,12 @@ public interface TicketService {
         // search, filter, sort and page. used by All Tickets and My Tickets
     PageResponse<TicketListItemDto> search(TicketSearchRequestDto request, TicketActor actor);
 
+    PageResponse<TicketListItemDto> departmentQueue(TicketActor actor, int page, int size);
+
     TicketSummaryDto summary(TicketActor actor);
 
     TicketResponseDto update(Long id, TicketUpdateRequestDto request, TicketActor actor);
+
 
     List<TicketHistoryResponseDto> history(Long id, TicketActor actor);
 

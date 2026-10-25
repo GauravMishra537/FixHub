@@ -75,6 +75,9 @@ public class Ticket extends AuditEntity {
     @Column(name = "reopen_count", nullable = false)
     private int reopenCount = 0;
 
+    @Column(name = "requires_approval", nullable = false)
+    private boolean requiresApproval;
+
     // optimistic lock: two edits at once, second one fails with a conflict
     @Version
     @Column(nullable = false)

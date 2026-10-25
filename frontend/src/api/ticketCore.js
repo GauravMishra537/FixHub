@@ -25,8 +25,10 @@ export const ticketCoreApi = {
   // kept for older screens. new code uses search()
   list: (page = 0, size = 10) => apiClient(`/tickets${qs({ page, size })}`),
   mine: (group, page = 0, size = 5) => apiClient(`/tickets/mine${qs({ group, page, size })}`),
-
-  categoryCounts: (type = 'ISSUE') => apiClient(`/tickets/category-counts${qs({ type })}`),
+  departmentQueue: ({ page = 0, size = 10 } = {}) =>
+  apiClient(`/tickets/department-queue?${new URLSearchParams({ page, size }).toString()}`),
+  
+    categoryCounts: (type = 'ISSUE') => apiClient(`/tickets/category-counts${qs({ type })}`),
   summary: () => apiClient('/tickets/summary'),
   get: (id) => apiClient(`/tickets/${id}`),
   update: (id, data) => apiClient(`/tickets/${id}`, json('PUT', data)),
