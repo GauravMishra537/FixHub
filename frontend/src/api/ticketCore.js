@@ -37,4 +37,22 @@ export const ticketCoreApi = {
   // q is always sent, even empty, so backend returns the 8 typing suggestions
   suggestCategories: (type, q) =>
     apiClient(`/ticket-categories?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q || '')}`),
+
+  // claim (employee)
+  claimState: (id) => apiClient(`/tickets/${id}/claim`),
+  claim: (id) => apiClient(`/tickets/${id}/claim`, { method: 'POST' }),
+  withdrawClaim: (id) => apiClient(`/tickets/${id}/claim`, { method: 'DELETE' }),
+
+  // claims and assignment (admin)
+  claims: (id) => apiClient(`/admin/tickets/${id}/claims`),
+  approveClaim: (id, claimId) => apiClient(`/admin/tickets/${id}/claims/${claimId}/approve`, { method: 'POST' }),
+  rejectClaim: (id, claimId, reason) =>
+    apiClient(`/admin/tickets/${id}/claims/${claimId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  assign: (id, userId) =>
+    apiClient(`/admin/tickets/${id}/assignee`, { method: 'PUT', body: JSON.stringify({ userId }) }),
+  unassign: (id) => apiClient(`/admin/tickets/${id}/assignee`, { method: 'DELETE' }),
+
 }

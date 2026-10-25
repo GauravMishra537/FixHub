@@ -6,5 +6,15 @@ package com.fixhub.notification.entity;
  */
 public enum NotificationType {
     // a new ticket was routed to your department
-    TICKET_ROUTED
+    TICKET_ROUTED,
+    // an employee asks to take a ticket that needs approval (to admins)
+    CLAIM_REQUESTED,
+    // your claim was approved or rejected
+    CLAIM_APPROVED,
+    CLAIM_REJECTED,
+    // a ticket was given to you, or taken from you
+    TICKET_ASSIGNED,
+    TICKET_UNASSIGNED,
+    // your ticket now has a person working on it (to the author)
+    TICKET_TAKEN
 }

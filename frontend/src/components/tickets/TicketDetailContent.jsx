@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Globe, Lock } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { ticketCoreApi } from '../../api/ticketCore'
 import Alert from '../common/Alert'
 import EditBar from '../common/EditBar'
 import { EditableSelect, EditableText } from '../common/Editable'
 import CategoryCombobox from './CategoryCombobox'
+import TicketClaimBox from './TicketClaimBox'
+import TicketAssignPanel from './TicketAssignPanel'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
 import { PRIORITY_OPTIONS, VISIBILITY_OPTIONS } from '../../utils/options'
-
 
 function Field({ label, children }) {
   return (
@@ -61,9 +63,10 @@ const normalize = (d) => ({
  * Everything about one ticket: view, edit, details and activity.
  * layout "page":  two columns, for the full details page.
  * layout "panel": one column, for the right-side panel.
- * onChanged(ticket): called after a successful save so a board behind the panel can refresh.
+ * onChanged(ticket): called after a successful save, claim or assignment so a board behind the panel can refresh.
  */
 export default function TicketDetailContent({ ticketId, layout = 'page', onChanged }) {
+  const { isAdmin } = useAuth()
   const [ticket, setTicket] = useState(null)
   const [draft, setDraft] = useState(null)
   const [history, setHistory] = useState([])
@@ -102,7 +105,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
 
   if (!ticket || !draft) return null
 
-    const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
+  const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
   const canTriage = Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
   const original = fromTicket(ticket)
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(original))
@@ -119,6 +122,12 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     setSaveError('')
     setNotice('')
     await load()
+  }
+
+  // after claim or assignment: load the ticket again and tell the board behind the panel
+  const afterAction = async (updated) => {
+    await load()
+    onChanged?.(updated)
   }
 
   const save = async () => {
@@ -160,6 +169,10 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
       {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
+      {!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+      {isAdmin && ticket.canTriage && (
+        <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
+      )}
 
       <div className="-ml-2">
         <EditableText
@@ -189,7 +202,6 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           {canEdit ? 'Click any field to edit it.' : 'As admin you can change the category and the priority.'}
         </p>
       )}
-
     </div>
   )
 

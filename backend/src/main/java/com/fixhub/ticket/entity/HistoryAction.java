@@ -4,7 +4,6 @@ public enum HistoryAction {
     CREATED,
     UPDATED,
     STATUS_CHANGED,
-    ASSIGNED,
     COMMENTED,
     ATTACHED,
     REOPENED,
@@ -12,5 +11,11 @@ public enum HistoryAction {
     BOOKING_RESCHEDULED,
     STOCK_ISSUED,
     STOCK_RETURNED,
-    OFFER_ACCEPTED
+    OFFER_ACCEPTED,
+    CLAIMED,
+    CLAIM_WITHDRAWN,
+    CLAIM_APPROVED,
+    CLAIM_REJECTED,
+    ASSIGNED,
+    UNASSIGNED
 }

@@ -144,17 +144,18 @@ export function Navbar() {
       </div>
 
       {isAuthenticated && (
-      <nav className="bg-blue-800">
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between overflow-x-auto">
-    <div className="flex items-center gap-1">
-      {links.map((l) => (
-        <NavItem key={l.to} {...l} />
-      ))}
-    </div>
-        <NotificationBell />
-      </div>
-      </nav>
-
+        <nav className="bg-blue-800">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+              {links.map((l) => (
+                <NavItem key={l.to} {...l} />
+              ))}
+            </div>
+            <div className="shrink-0">
+              <NotificationBell />
+            </div>
+          </div>
+        </nav>
       )}
     </header>
   )

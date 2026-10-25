@@ -108,6 +108,28 @@ public class TicketRules {
         return admin && !FINISHED.contains(ticket.getStatus());
     }
 
+        // ---------- claim ----------
+
+    /** null = this person may claim the ticket. Otherwise a message that is safe to show. */
+    public String claimDeniedReason(Ticket ticket, Long userId, Long userDepartmentId, boolean admin) {
+        if (admin) {
+            return "Admins assign tickets, they do not claim them";
+        }
+        if (ticket.getType() != TicketType.ISSUE) {
+            return "Only issue tickets can be claimed";
+        }
+        if (!queueStatuses().contains(ticket.getStatus()) || ticket.getAssigneeId() != null) {
+            return "This ticket is no longer waiting for someone";
+        }
+        if (userId.equals(ticket.getAuthorId())) {
+            return "You cannot claim your own ticket";
+        }
+        if (ticket.getDepartmentId() == null || !ticket.getDepartmentId().equals(userDepartmentId)) {
+            return "This ticket is routed to another department";
+        }
+        return null;
+    }
+
     // ---------- dashboard groups ----------
 
     public Set<TicketStatus> pendingStatuses() {

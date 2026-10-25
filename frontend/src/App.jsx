@@ -24,6 +24,7 @@ import TicketDetailsPage from './pages/TicketDetailsPage'
 import AdminTicketsPage from './pages/admin/AdminTicketsPage'
 import TicketsPage from './pages/TicketsPage'
 import UserPage from './pages/admin/UserPage'
+import CategoryConsolePage from './pages/admin/CategoryConsolePage'
 import RegistrationPage from './pages/admin/RegistrationPage'
 import TicketHistoryPage from './pages/admin/TicketHistoryPage'
 import RoutingRulesPage from './pages/admin/RoutingRulesPage'
@@ -61,6 +62,7 @@ export function App() {
                 <Route path="admin/users" element={<UsersPage />} />
                 <Route path="admin/users/:id" element={<UserPage />} />
                 <Route path="admin/requests/:id" element={<RegistrationPage />} />
+               <Route path="admin/categories" element={<CategoryConsolePage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />
                 <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
                 <Route path="admin/rooms" element={<TicketsPage key="ROOM_BOOKING" type="ROOM_BOOKING" title="Room bookings" />} />
