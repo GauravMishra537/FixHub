@@ -3,6 +3,7 @@ import { ticketCoreApi } from '../../api/ticketCore'
 import useTicketFilters from '../../hooks/useTicketFilters'
 import useBoardColumn from '../../hooks/useBoardColumn'
 import BoardColumn from './BoardColumn'
+import WorkStats from './WorkStats'
 import TicketCard from './TicketCard'
 import TicketDrawer from '../tickets/TicketDrawer'
 import TicketFilterBar from '../tickets/TicketFilterBar'
@@ -76,6 +77,8 @@ export default function UserBoard() {
         showStatus={false}
         showSort
       />
+
+            <WorkStats />
 
       <div className="flex items-start gap-4 overflow-x-auto p-4">
         {MY_COLUMNS.map((column) => (

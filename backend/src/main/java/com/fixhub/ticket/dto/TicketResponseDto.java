@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.List;
 
 /** Full ticket for the details page. */
 @Getter
@@ -46,4 +47,7 @@ public class TicketResponseDto {
 
     // true when the viewer is an admin and the ticket is not finished: category and priority only
     private boolean canTriage;
+
+    // buttons this person may press now (start, resolve, reopen...). empty when none
+    private List<TicketActionDto> actions = List.of();
 }

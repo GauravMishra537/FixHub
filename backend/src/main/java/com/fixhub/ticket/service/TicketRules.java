@@ -39,9 +39,17 @@ public class TicketRules {
     private static final Set<TicketStatus> RESOLVED = Set.of(
             TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.RETURNED);
 
-    // finished tickets: nobody changes them any more
+    // an employee is working on these
+    private static final Set<TicketStatus> WORKING = Set.of(
+            TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.ON_HOLD, TicketStatus.REOPENED);
+
+    // the assignee solved it. closed is resolved and confirmed
+    private static final Set<TicketStatus> SOLVED = Set.of(TicketStatus.RESOLVED, TicketStatus.CLOSED);
+
+    // finished tickets: nobody changes them any more. a resolved ticket keeps its assignee, he is the solver
     private static final Set<TicketStatus> FINISHED = Set.of(
-            TicketStatus.CLOSED, TicketStatus.CANCELLED, TicketStatus.REJECTED, TicketStatus.RETURNED);
+            TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.CANCELLED,
+            TicketStatus.REJECTED, TicketStatus.RETURNED);
 
     static {
         INITIAL_STATUS.put(TicketType.ISSUE, TicketStatus.NEW);
@@ -103,12 +111,12 @@ public class TicketRules {
 
     // ---------- admin triage ----------
 
-    /** An admin may change category and priority of any ticket that is not finished. */
+    /** An admin may change category, priority and assignee of any ticket that is not finished. */
     public boolean canTriage(Ticket ticket, boolean admin) {
         return admin && !FINISHED.contains(ticket.getStatus());
     }
 
-        // ---------- claim ----------
+    // ---------- claim ----------
 
     /** null = this person may claim the ticket. Otherwise a message that is safe to show. */
     public String claimDeniedReason(Ticket ticket, Long userId, Long userDepartmentId, boolean admin) {
@@ -143,5 +151,15 @@ public class TicketRules {
     // statuses a department can pick work from
     public Set<TicketStatus> queueStatuses() {
         return Set.of(TicketStatus.NEW, TicketStatus.OPEN);
+    }
+
+    // statuses that count as "working on"
+    public Set<TicketStatus> workingStatuses() {
+        return WORKING;
+    }
+
+    // statuses that count as "resolved by me"
+    public Set<TicketStatus> solvedStatuses() {
+        return SOLVED;
     }
 }

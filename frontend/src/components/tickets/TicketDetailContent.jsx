@@ -8,6 +8,7 @@ import { EditableSelect, EditableText } from '../common/Editable'
 import CategoryCombobox from './CategoryCombobox'
 import TicketClaimBox from './TicketClaimBox'
 import TicketAssignPanel from './TicketAssignPanel'
+import TicketActionBar from './TicketActionBar'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -124,10 +125,12 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     await load()
   }
 
-  // after claim or assignment: load the ticket again and tell the board behind the panel
+  // after claim, assignment or status move: load the ticket again, tell the board behind the panel,
+  // and tell every other part of the page (stats row, department queue)
   const afterAction = async (updated) => {
     await load()
     onChanged?.(updated)
+    window.dispatchEvent(new Event('tickets:changed'))
   }
 
   const save = async () => {
@@ -167,12 +170,16 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           </button>
         </div>
       )}
-      {notice && !dirty && <Alert type="success">{notice}</Alert>}
+    {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-      {!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
-      {isAdmin && ticket.canTriage && (
-        <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
-      )}
+    {!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+    {isAdmin && ticket.canTriage && (
+    <>
+    <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
+    <TicketActionBar ticket={ticket} onDone={afterAction} />
+    </>
+)}
+
 
       <div className="-ml-2">
         <EditableText

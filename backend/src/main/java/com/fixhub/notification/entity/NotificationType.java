@@ -16,5 +16,10 @@ public enum NotificationType {
     TICKET_ASSIGNED,
     TICKET_UNASSIGNED,
     // your ticket now has a person working on it (to the author)
-    TICKET_TAKEN
+    TICKET_TAKEN,
+    TICKET_STATUS,
+    TICKET_RESOLVED,
+    TICKET_CLOSED,
+    TICKET_REOPENED,
+    TICKET_CANCELLED
 }

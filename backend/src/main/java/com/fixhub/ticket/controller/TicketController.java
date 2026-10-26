@@ -14,6 +14,7 @@ import com.fixhub.ticket.dto.TicketUpdateRequestDto;
 import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketService;
+import com.fixhub.ticket.dto.TicketWorkStatsDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -100,6 +101,12 @@ public class TicketController {
             Authentication authentication) {
         return ResponseEntity.ok(ApiResponse.success(
                 ticketService.summary(actor(user, authentication))));
+    }
+
+        @GetMapping("/work-stats")
+    public ResponseEntity<ApiResponse<TicketWorkStatsDto>> workStats(
+            @AuthenticationPrincipal AuthUser user, Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(ticketService.workStats(actor(user, authentication))));
     }
 
     @GetMapping("/{id}")

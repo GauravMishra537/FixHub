@@ -55,4 +55,12 @@ export const ticketCoreApi = {
     apiClient(`/admin/tickets/${id}/assignee`, { method: 'PUT', body: JSON.stringify({ userId }) }),
   unassign: (id) => apiClient(`/admin/tickets/${id}/assignee`, { method: 'DELETE' }),
 
+    // status workflow: action is one of START, HOLD, RESUME, RESOLVE, CONFIRM, REOPEN, CANCEL
+  transition: (id, action, note, version) =>
+    apiClient(`/tickets/${id}/transition`, json('POST', { action, note: note || null, version })),
+
+  // my work numbers for the dashboard row
+  workStats: () => apiClient('/tickets/work-stats'),
+
+
 }

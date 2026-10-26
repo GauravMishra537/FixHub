@@ -10,6 +10,7 @@ import com.fixhub.ticket.dto.TicketUpdateRequestDto;
 import com.fixhub.ticket.dto.TicketSearchRequestDto;
 import com.fixhub.ticket.dto.TicketCategoryCountDto;
 import com.fixhub.ticket.entity.TicketType;
+import com.fixhub.ticket.dto.TicketWorkStatsDto;
 
 import java.util.List;
 
@@ -39,4 +40,8 @@ public interface TicketService {
 
         // categories of one type with how many visible tickets each has, busiest first
     List<TicketCategoryCountDto> categoryCounts(TicketType type, TicketActor actor);
+
+        /** Assigned now, resolved in total, resolved this month, average hours. For the logged in employee. */
+    TicketWorkStatsDto workStats(TicketActor actor);
+
 }

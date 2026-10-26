@@ -2,6 +2,8 @@
 export const PENDING_STATUSES = ['NEW', 'OPEN', 'PENDING_APPROVAL']
 export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'APPROVED', 'ISSUED', 'ACCEPTED']
 export const DONE_STATUSES = ['RESOLVED', 'CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED']
+// the assignee solved it. closed is resolved and confirmed
+export const SOLVED_STATUSES = ['RESOLVED', 'CLOSED']
 
 // "my board": what I raised or work on
 export const MY_COLUMNS = [
@@ -27,10 +29,17 @@ export const MY_COLUMNS = [
     empty: 'No tickets are assigned to you.',
   },
   {
+    id: 'solved',
+    title: 'Resolved by me',
+    color: 'slate',
+    params: { assignedToMe: true, status: SOLVED_STATUSES },
+    empty: 'You have not resolved a ticket yet.',
+  },
+  {
     id: 'done',
     title: 'Resolved',
     color: 'emerald',
-    params: { involvedOnly: true, status: DONE_STATUSES },
+    params: { mineOnly: true, status: DONE_STATUSES },
     empty: 'Nothing resolved yet.',
   },
 ]

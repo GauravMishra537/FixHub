@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.entity.TicketVisibility;
+import java.time.Instant;
 
 import java.util.List;
 
@@ -81,4 +82,30 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
     List<Object[]> countByCategoryVisible(@Param("type") TicketType type,
                                           @Param("admin") boolean admin,
                                           @Param("viewerId") Long viewerId);
+
+         // ---------- work stats of an assignee ----------
+    long countByAssigneeIdAndStatusIn(Long assigneeId, Collection<TicketStatus> statuses);
+
+    @Query("""
+            select count(t) from Ticket t
+            where t.assigneeId = :userId
+              and t.status in :statuses
+              and t.resolvedOn >= :since
+            """)
+    long countResolvedSince(@Param("userId") Long userId,
+                            @Param("statuses") Collection<TicketStatus> statuses,
+                            @Param("since") Instant since);
+
+    // average hours from raised to resolved, over tickets this person resolved
+    @Query(value = """
+            select avg(extract(epoch from (resolved_on - created_on))) / 3600.0
+              from ticket
+             where assignee_id = :userId
+               and status in ('RESOLVED', 'CLOSED')
+               and resolved_on is not null
+               and deleted_on is null
+            """, nativeQuery = true)
+    Double averageHoursToResolve(@Param("userId") Long userId);                                     
+
+
 }

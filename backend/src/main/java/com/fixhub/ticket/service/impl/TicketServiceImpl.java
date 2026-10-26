@@ -1,6 +1,9 @@
 package com.fixhub.ticket.service.impl;
 
 import com.fixhub.common.dto.PageResponse;
+import com.fixhub.notification.entity.NotificationType;
+import com.fixhub.notification.service.NotificationService;
+import com.fixhub.ticket.dto.TicketActionDto;
 import com.fixhub.ticket.dto.TicketCategoryCountDto;
 import com.fixhub.ticket.dto.TicketCreateRequestDto;
 import com.fixhub.ticket.dto.TicketHistoryResponseDto;
@@ -9,6 +12,7 @@ import com.fixhub.ticket.dto.TicketResponseDto;
 import com.fixhub.ticket.dto.TicketSearchRequestDto;
 import com.fixhub.ticket.dto.TicketSummaryDto;
 import com.fixhub.ticket.dto.TicketUpdateRequestDto;
+import com.fixhub.ticket.dto.TicketWorkStatsDto;
 import com.fixhub.ticket.entity.Ticket;
 import com.fixhub.ticket.entity.TicketCategory;
 import com.fixhub.ticket.entity.TicketHistory;
@@ -29,6 +33,7 @@ import com.fixhub.ticket.service.TicketHistoryService;
 import com.fixhub.ticket.service.TicketNumberService;
 import com.fixhub.ticket.service.TicketRules;
 import com.fixhub.ticket.service.TicketService;
+import com.fixhub.ticket.service.TicketWorkflow;
 import com.fixhub.user.entity.Department;
 import com.fixhub.user.entity.User;
 import com.fixhub.user.repository.DepartmentRepository;
@@ -42,9 +47,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.fixhub.notification.entity.NotificationType;
-import com.fixhub.notification.service.NotificationService;
 
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -72,6 +78,7 @@ public class TicketServiceImpl implements TicketService {
     private final RoutingService routingService;
     private final NotificationService notificationService;
     private final TicketRules rules;
+    private final TicketWorkflow workflow;
     private final TicketMapper mapper;
 
     public TicketServiceImpl(TicketRepository ticketRepository,
@@ -83,8 +90,9 @@ public class TicketServiceImpl implements TicketService {
                              TicketNumberService numberService,
                              TicketHistoryService historyService,
                              RoutingService routingService,
-                                NotificationService notificationService,
+                             NotificationService notificationService,
                              TicketRules rules,
+                             TicketWorkflow workflow,
                              TicketMapper mapper) {
         this.ticketRepository = ticketRepository;
         this.historyRepository = historyRepository;
@@ -97,6 +105,7 @@ public class TicketServiceImpl implements TicketService {
         this.routingService = routingService;
         this.notificationService = notificationService;
         this.rules = rules;
+        this.workflow = workflow;
         this.mapper = mapper;
     }
 
@@ -233,6 +242,20 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional(readOnly = true)
+    public TicketWorkStatsDto workStats(TicketActor actor) {
+        Instant monthStart = YearMonth.now(ZoneId.systemDefault())
+                .atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+
+        Double avg = ticketRepository.averageHoursToResolve(actor.id());
+        return new TicketWorkStatsDto(
+                ticketRepository.countByAssigneeIdAndStatusIn(actor.id(), rules.workingStatuses()),
+                ticketRepository.countByAssigneeIdAndStatusIn(actor.id(), rules.solvedStatuses()),
+                ticketRepository.countResolvedSince(actor.id(), rules.solvedStatuses(), monthStart),
+                avg == null ? null : Math.round(avg * 10) / 10.0);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TicketHistoryResponseDto> history(Long id, TicketActor actor) {
         findViewable(id, actor);
         List<TicketHistory> rows = historyRepository.findByTicketIdOrderByCreatedOnAscIdAsc(id);
@@ -300,7 +323,7 @@ public class TicketServiceImpl implements TicketService {
 
     // ---------- helpers ----------
 
-        // tell every employee of the routed department, except the author. private tickets stay quiet
+    // tell every employee of the routed department, except the author. private tickets stay quiet
     private void notifyDepartment(Ticket ticket, TicketActor actor) {
         if (ticket.getDepartmentId() == null || ticket.getVisibility() == TicketVisibility.PRIVATE) {
             return;
@@ -377,6 +400,9 @@ public class TicketServiceImpl implements TicketService {
         Names names = loadNames(List.of(ticket));
         TicketResponseDto dto = mapper.toResponse(ticket, names, rules.canEdit(ticket, actor.id()));
         dto.setCanTriage(rules.canTriage(ticket, actor.admin()));
+        dto.setActions(workflow.allowedActions(ticket, actor.id(), actor.admin()).stream()
+                .map(a -> new TicketActionDto(a.name(), a.label(), a.noteRequired()))
+                .toList());
         return dto;
     }
 
