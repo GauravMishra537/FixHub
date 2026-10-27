@@ -5,6 +5,8 @@ import { getUsers } from '../../api/admin'
 import SelectMenu from '../common/SelectMenu'
 import { formatDateTime } from '../../utils/format'
 
+const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+
 /** Admin box: waiting claims (approve or reject), assign to a person, take the ticket back. */
 export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
   const ticketId = ticket.id
@@ -46,12 +48,18 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
   }
 
   const waiting = claims.filter((c) => c.status === 'PENDING')
-  const options = users
-    .filter((u) => u.role !== 'ADMIN')
-    .map((u) => ({
-      value: u.id,
-      label: `${u.fullName} (${u.email})${u.departmentName ? ` - ${u.departmentName}` : ''}`,
-    }))
+
+  // only people of the ticket's department. no department on ticket, or nobody in it: show everyone
+  const people = users.filter((u) => u.role !== 'ADMIN')
+  const department = ticket.departmentName
+  const inDepartment = department ? people.filter((u) => same(u.departmentName, department)) : people
+  const wholeList = Boolean(department) && inDepartment.length === 0
+  const shown = wholeList ? people : inDepartment
+
+  const options = shown.map((u) => ({
+    value: u.id,
+    label: `${u.fullName} (${u.email})${u.departmentName ? ` - ${u.departmentName}` : ''}`,
+  }))
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -131,6 +139,7 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
       <div className="mt-3">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
           {ticket.assigneeName ? `Assigned to ${ticket.assigneeName}. Give it to someone else` : 'Assign to a person'}
+          {department && !wholeList ? ` (${department})` : ''}
         </div>
         <div className="flex gap-2">
           <SelectMenu
@@ -150,6 +159,10 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
             Assign
           </button>
         </div>
+
+        {wholeList && (
+          <p className="mt-1.5 text-xs text-amber-600">No one in {department}. Showing everyone.</p>
+        )}
 
         {ticket.assigneeName && ticket.status === 'ASSIGNED' && (
           <button

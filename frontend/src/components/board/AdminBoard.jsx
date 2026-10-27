@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Award } from 'lucide-react'
 import { ticketCoreApi } from '../../api/ticketCore'
+import { useAuth } from '../../context/AuthContext'
 import useTicketFilters from '../../hooks/useTicketFilters'
 import useBoardColumn from '../../hooks/useBoardColumn'
+import useDismissed from '../../hooks/useDismissed'
 import BoardColumn from './BoardColumn'
+import ClearButton from './ClearButton'
 import TicketCard from './TicketCard'
 import TicketDrawer from '../tickets/TicketDrawer'
 import TicketFilterBar from '../tickets/TicketFilterBar'
@@ -11,7 +14,8 @@ import FilterMenu from '../common/FilterMenu'
 import { PENDING_STATUSES, ACTIVE_STATUSES } from './boardColumns'
 
 const PAGE = 10
-const RESOLVED_STATUSES = ['RESOLVED', 'CLOSED', 'RETURNED']
+// resolved is not finished: it stays in Open until the requester or an admin closes it
+const RESOLVED_STATUSES = ['CLOSED', 'RETURNED']
 const REJECTED_STATUSES = ['REJECTED', 'CANCELLED']
 
 const GROUPS = [
@@ -61,8 +65,8 @@ function useTicketGroup(statuses, base, refresh, enabled) {
   return enabled ? col : EMPTY
 }
 
-// user or skill card. a click opens the right panel
-function PersonCard({ card, onSelect, onSkillApprove, onSkillReject, busySkillId }) {
+// user or skill card. a click opens the right panel. onDismiss draws the X (Resolved column only)
+function PersonCard({ card, onSelect, onSkillApprove, onSkillReject, busySkillId, onDismiss }) {
   const isUser = card.kind === 'User'
   const skill = card.target.skill
   const pendingSkill = !isUser && card.status === 'PENDING'
@@ -106,6 +110,8 @@ function PersonCard({ card, onSelect, onSkillApprove, onSkillReject, busySkillId
             {/*  */}
           </div>
         )}
+
+        {onDismiss && <ClearButton onClick={onDismiss} />}
       </div>
     </div>
   )
@@ -126,7 +132,9 @@ export default function AdminBoard({
   onSkillReject,
   busySkillId,
 }) {
+  const { user: me } = useAuth()
   const { filters, activeCount, update, clear } = useTicketFilters()
+  const dismissed = useDismissed(me?.id, 'admin')
   const [categories, setCategories] = useState([])
   const [skillFilter, setSkillFilter] = useState('')
   const [openId, setOpenId] = useState(null)
@@ -143,6 +151,9 @@ export default function AdminBoard({
   const showUsers = !ticketFilterOn && !skillFilter
   const showSkills = !ticketFilterOn
   const showTickets = !skillFilter
+
+  // while searching or filtering, cleared cards show again
+  const filtering = activeCount > 0 || Boolean(filters.q) || Boolean(skillFilter)
 
   const base = useMemo(
     () => ({
@@ -163,6 +174,26 @@ export default function AdminBoard({
     resolved: useTicketGroup(RESOLVED_STATUSES, base, refresh, showTickets),
     rejected: useTicketGroup(REJECTED_STATUSES, base, refresh, showTickets),
   }
+
+  // hidden tickets use up page slots. when few are left on screen, load the next page
+  const resolvedTickets = tickets.resolved
+  const resolvedVisible = filtering
+    ? resolvedTickets.items.length
+    : resolvedTickets.items.filter((x) => !dismissed.has(`t-${x.id}`)).length
+
+  useEffect(() => {
+    if (
+      !filtering &&
+      dismissed.count > 0 &&
+      resolvedVisible < 3 &&
+      resolvedTickets.hasMore &&
+      !resolvedTickets.loading &&
+      !resolvedTickets.loadingMore
+    ) {
+      resolvedTickets.loadMore()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtering, dismissed.count, resolvedVisible, resolvedTickets.hasMore, resolvedTickets.loading, resolvedTickets.loadingMore])
 
   const people = useMemo(() => {
     const q = (filters.q || '').toLowerCase()
@@ -225,8 +256,13 @@ export default function AdminBoard({
     Object.keys(out).forEach((k) => {
       out[k] = out[k].filter(match).sort(byDate)
     })
+
+    // cleared users and skills stay hidden until the person searches or filters
+    if (!filtering) {
+      out.resolved = out.resolved.filter((c) => !dismissed.ids.includes(c.key))
+    }
     return out
-  }, [registrations, users, skills, filters.q, showUsers, showSkills, skillFilter])
+  }, [registrations, users, skills, filters.q, showUsers, showSkills, skillFilter, filtering, dismissed.ids])
 
   const skillOptions = useMemo(() => {
     const count = {}
@@ -268,12 +304,48 @@ export default function AdminBoard({
         {GROUPS.map((g) => {
           const t = tickets[g.id]
           const cards = people[g.id]
+
+          // only the Resolved column can be cleared
+          const clearable = g.id === 'resolved'
+          const hideOn = clearable && !filtering
+          const shownTickets = hideOn ? t.items.filter((x) => !dismissed.has(`t-${x.id}`)) : t.items
+          const hiddenTickets = t.items.length - shownTickets.length
+
+          const nodes = [
+            ...cards.map((c) => (
+              <PersonCard
+                key={c.key}
+                card={c}
+                onSelect={onSelect}
+                onSkillApprove={onSkillApprove}
+                onSkillReject={onSkillReject}
+                busySkillId={busySkillId}
+                onDismiss={clearable ? () => dismissed.dismiss(c.key) : undefined}
+              />
+            )),
+            ...shownTickets.map((ticket) => (
+              <div key={`t-${ticket.id}`} className="relative min-w-0">
+                <TicketCard
+                  ticket={ticket}
+                  selected={openId === ticket.id}
+                  onOpen={() => setOpenId(ticket.id)}
+                />
+                {clearable && (
+                  <ClearButton
+                    className="absolute right-1.5 top-1.5"
+                    onClick={() => dismissed.dismiss(`t-${ticket.id}`)}
+                  />
+                )}
+              </div>
+            )),
+          ]
+
           return (
             <BoardColumn
               key={g.id}
               title={g.title}
               color={g.color}
-              count={cards.length + t.total}
+              count={Math.max(0, cards.length + t.total - hiddenTickets)}
               storageKey={`board.admin.${g.id}`}
               loading={loading || t.loading}
               loadingMore={t.loadingMore}
@@ -283,24 +355,7 @@ export default function AdminBoard({
               onRetry={t.reload}
               emptyText={g.empty}
             >
-              {cards.map((c) => (
-                <PersonCard
-                  key={c.key}
-                  card={c}
-                  onSelect={onSelect}
-                  onSkillApprove={onSkillApprove}
-                  onSkillReject={onSkillReject}
-                  busySkillId={busySkillId}
-                />
-              ))}
-              {t.items.map((ticket) => (
-                <TicketCard
-                  key={`t-${ticket.id}`}
-                  ticket={ticket}
-                  selected={openId === ticket.id}
-                  onOpen={() => setOpenId(ticket.id)}
-                />
-              ))}
+              {nodes}
             </BoardColumn>
           )
         })}

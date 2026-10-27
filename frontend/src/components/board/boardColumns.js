@@ -1,9 +1,8 @@
 // which statuses belong to which column. the admin board reuses these lists
 export const PENDING_STATUSES = ['NEW', 'OPEN', 'PENDING_APPROVAL']
-export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'APPROVED', 'ISSUED', 'ACCEPTED']
-export const DONE_STATUSES = ['RESOLVED', 'CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED']
-// the assignee solved it. closed is resolved and confirmed
-export const SOLVED_STATUSES = ['RESOLVED', 'CLOSED']
+// RESOLVED stays here until the requester or an admin closes the ticket
+export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'RESOLVED', 'APPROVED', 'ISSUED', 'ACCEPTED']
+export const DONE_STATUSES = ['CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED']
 
 // "my board": what I raised or work on
 export const MY_COLUMNS = [
@@ -27,13 +26,6 @@ export const MY_COLUMNS = [
     color: 'blue',
     params: { assignedToMe: true, status: ACTIVE_STATUSES },
     empty: 'No tickets are assigned to you.',
-  },
-  {
-    id: 'solved',
-    title: 'Resolved by me',
-    color: 'slate',
-    params: { assignedToMe: true, status: SOLVED_STATUSES },
-    empty: 'You have not resolved a ticket yet.',
   },
   {
     id: 'done',

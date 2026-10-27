@@ -170,15 +170,19 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           </button>
         </div>
       )}
-    {notice && !dirty && <Alert type="success">{notice}</Alert>}
+{notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-    {!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
-    {isAdmin && ticket.canTriage && (
-    <>
-    <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
-    <TicketActionBar ticket={ticket} onDone={afterAction} />
-    </>
+{!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+
+{/* Only show the Assign Panel if the user is an admin and the ticket can be triaged */}
+{isAdmin && ticket.canTriage && (
+  <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
 )}
+
+{/* Always render the action bar so eligible users can click "Start work", "Mark resolved", etc. */}
+<TicketActionBar ticket={ticket} onDone={afterAction} />
+
+
 
 
       <div className="-ml-2">
