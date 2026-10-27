@@ -21,5 +21,6 @@ public enum NotificationType {
     TICKET_RESOLVED,
     TICKET_CLOSED,
     TICKET_REOPENED,
-    TICKET_CANCELLED
+    TICKET_CANCELLED,
+    COMMENT_ADDED
 }

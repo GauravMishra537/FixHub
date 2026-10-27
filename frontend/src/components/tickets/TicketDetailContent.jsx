@@ -9,6 +9,7 @@ import CategoryCombobox from './CategoryCombobox'
 import TicketClaimBox from './TicketClaimBox'
 import TicketAssignPanel from './TicketAssignPanel'
 import TicketActionBar from './TicketActionBar'
+import TicketComments from './TicketComments'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -285,17 +286,20 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       <TicketTimeline items={history} />
     </div>
   )
+    const comments = <TicketComments ticketId={ticketId} />
 
   const body = panel ? (
     <div className="space-y-4">
       {main}
       {details}
+      {comments}
       {activity}
     </div>
   ) : (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         {main}
+        {comments}
         {activity}
       </div>
       {details}
