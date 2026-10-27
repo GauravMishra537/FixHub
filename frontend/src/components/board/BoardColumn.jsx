@@ -167,7 +167,7 @@ export default function BoardColumn({
 
       <div
         onScroll={onScroll}
-         className="grid max-h-[560px] flex-1 grid-cols-[repeat(auto-fill,minmax(220px,1fr))] content-start gap-2 overflow-y-auto px-2 pb-3"
+        className="grid max-h-[560px] flex-1 grid-cols-[repeat(auto-fill,minmax(220px,1fr))] content-start gap-2 overflow-y-auto px-2 pb-3"
       >
         {loading && (
           <div className="col-span-full flex items-center justify-center py-8 text-sm text-slate-400">
