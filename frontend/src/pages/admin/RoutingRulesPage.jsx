@@ -10,7 +10,7 @@ import { EditableSelect } from '../../components/common/Editable'
 
 const TYPES = [
   { value: 'ISSUE', label: 'Issue' },
-  { value: 'ROOM_BOOKING', label: 'Room booking' },
+  { value: 'ROOM_BOOKING', label: 'Infra booking' },
   { value: 'RESOURCE_REQUEST', label: 'Resource request' },
   { value: 'TOPIC_REQUEST', label: 'Topic request' },
 ]

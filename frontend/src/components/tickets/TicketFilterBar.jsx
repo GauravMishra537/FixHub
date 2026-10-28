@@ -43,8 +43,8 @@ function todayIso() {
 }
 
 /**
- * Row 1: title at the left, search box at the right.
- * Row 2: all filters as buttons in one row (wraps on a small screen).
+ * Row 1: title at the left, view buttons at the right.
+ * Row 2: all filters and the search box in one row (wraps on a small screen).
  * filters, update, clear, activeCount come from useTicketFilters.
  * categories = [{ categoryId, name, count }] from GET /api/tickets/category-counts
  * extra: more filter buttons from the page, shown after Sort.
@@ -59,6 +59,8 @@ export default function TicketFilterBar({
   showStatus = true,
   showSort = false,
   extra = null,
+  headerExtra = null,
+  searchAlign='left',
 }) {
   // the box shows what the user types at once. the URL and the list follow 400 ms after the last key
   const [text, setText] = useState(filters.q)
@@ -79,21 +81,10 @@ export default function TicketFilterBar({
 
   return (
     <div className="space-y-3 border-b border-slate-100 px-5 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {title ? <h2 className="text-lg font-semibold text-slate-900">{title}</h2> : <span />}
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        {title ? <h2 className="shrink-0 text-lg font-semibold text-slate-900">{title}</h2> : <span />}
 
-        <div className="relative w-full sm:w-80">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={text}
-            maxLength={100}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Search by title or ticket number"
-            aria-label="Search tickets"
-            className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
+        {headerExtra && <div className="ml-auto shrink-0">{headerExtra}</div>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +176,24 @@ export default function TicketFilterBar({
             Clear
           </button>
         )}
-      </div>
+<div
+  className={`relative min-w-0 w-60 shrink-0 ${
+    searchAlign === 'right' ? 'ml-auto' : ''
+  }`}
+>
+  <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+  <input
+    type="text"
+    value={text}
+    maxLength={100}
+    onChange={(e) => setText(e.target.value)}
+    placeholder="Search by title"
+    aria-label="Search tickets"
+    className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+  />
+</div>
+
     </div>
+  </div>
   )
 }

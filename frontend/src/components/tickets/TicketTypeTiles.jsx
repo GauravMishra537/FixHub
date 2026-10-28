@@ -14,7 +14,7 @@ const TYPES = [
   },
   {
     to: '/rooms',
-    title: 'Room Booking',
+    title: 'Infra Booking',
     text: 'Book a meeting room',
     icon: CalendarDays,
     box: 'bg-blue-50 border-blue-200 hover:border-blue-400',

@@ -46,7 +46,7 @@ export function App() {
               <Route path="issues/new" element={<CreateTicketPage />} />
               <Route path="tickets" element={<TicketsPage />} />
               <Route path="tickets/:id" element={<TicketDetailsPage />} />
-              <Route path="rooms" element={<ComingSoonPage title="Room Booking" />} />
+              <Route path="rooms" element={<ComingSoonPage title="Infra Booking" />} />
               <Route path="resources" element={<ComingSoonPage title="Resource Requests" />} />
               <Route path="topics" element={<ComingSoonPage title="Learning / Topic Requests" />} />
               <Route path="oauth/callback" element={<OAuthCallbackPage />} />
@@ -65,7 +65,7 @@ export function App() {
                <Route path="admin/categories" element={<CategoryConsolePage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />
                 <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
-                <Route path="admin/rooms" element={<TicketsPage key="ROOM_BOOKING" type="ROOM_BOOKING" title="Room bookings" />} />
+                <Route path="admin/rooms" element={<TicketsPage key="ROOM_BOOKING" type="ROOM_BOOKING" title="Infra bookings" />} />
                 <Route path="admin/resources" element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
                 <Route path="admin/topics" element={<TicketsPage key="TOPIC_REQUEST" type="TOPIC_REQUEST" title="Topic requests" />} />
               </Route>
