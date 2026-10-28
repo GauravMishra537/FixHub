@@ -16,7 +16,7 @@ const MODULES = [
     iconBox: 'bg-red-100 text-red-600',
   },
   {
-    title: 'Room Booking',
+    title: 'Infra Booking',
     tag: 'Facilities',
     text: 'Check availability, submit conference room reservations, and manage schedule approvals.',
     icon: CalendarDays,

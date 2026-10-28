@@ -118,7 +118,15 @@ export default function UserBoard() {
       sortBy: filters.sortBy,
       direction: filters.direction,
     }),
-    [filters.q, filters.categoryId, filters.priority, filters.createdFrom, filters.createdTo, filters.sortBy, filters.direction],
+    [
+      filters.q,
+      filters.categoryId,
+      filters.priority,
+      filters.createdFrom,
+      filters.createdTo,
+      filters.sortBy,
+      filters.direction,
+    ],
   )
 
   useEffect(() => {
@@ -147,6 +155,32 @@ export default function UserBoard() {
         categories={categories}
         showStatus={false}
         showSort
+        searchAlign="right"
+        headerExtra={
+          <div
+            role="tablist"
+            aria-label="Board view"
+            className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-100 p-1"
+          >
+            {MY_VIEWS.map((v) => {
+              const active = v.id === current.id
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => pickView(v.id)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-semibold transition ${
+                    active ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              )
+            })}
+          </div>
+        }
         extra={
           <FilterMenu
             icon={Activity}
@@ -158,28 +192,6 @@ export default function UserBoard() {
           />
         }
       />
-
-      <div className="px-4 pt-4">
-        <div role="tablist" className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
-          {MY_VIEWS.map((v) => {
-            const active = v.id === current.id
-            return (
-              <button
-                key={v.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => pickView(v.id)}
-                className={`rounded-md px-4 py-1.5 text-sm font-semibold transition ${
-                  active ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {v.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
 
       <div className="flex items-start gap-4 overflow-x-auto p-4">
         {current.columns.map((column) => (
