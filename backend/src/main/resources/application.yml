@@ -46,6 +46,20 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  storage:
+    endpoint: http://127.0.0.1:9000          # backend talks to the server here
+    public-endpoint: http://localhost:9000   # links given to the browser use this host
+    bucket: fixhub-attachments
+    region: us-east-1
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
+    part-size-bytes: 5242880                 # 5 MiB
+    max-size-bytes: 26214400                 # 25 MB
+    max-files-per-ticket: 10
+    max-open-uploads-per-user: 3
+    part-url-minutes: 15
+    download-url-minutes: 2
+    stale-upload-hours: 24  
   bootstrap-admin:
     enabled: ${APP_BOOTSTRAP_ADMIN:false}
     email: ${ADMIN_EMAIL:}

@@ -13,10 +13,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import java.util.UUID;
 
 @RestControllerAdvice
+@Slf4j 
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -79,11 +86,15 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(ex.getStatusCode()).body(ApiResponse.error(ex.getReason()));
 }
 
+    // last net. every error that has no handler of its own ends here
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
+        String reference = UUID.randomUUID().toString().substring(0, 8);
+        // full stack trace in the terminal, with the same reference the person sees
+        log.error("Unhandled error [{}]", reference, ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("An unexpected server error occurred"));
+                .body(ApiResponse.error("An unexpected server error occurred. Reference: " + reference));
     }
     
 }

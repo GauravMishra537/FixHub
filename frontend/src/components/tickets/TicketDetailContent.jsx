@@ -10,6 +10,7 @@ import TicketClaimBox from './TicketClaimBox'
 import TicketAssignPanel from './TicketAssignPanel'
 import TicketActionBar from './TicketActionBar'
 import TicketComments from './TicketComments'
+import TicketAttachments from './TicketAttachments'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -288,10 +289,13 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   )
     const comments = <TicketComments ticketId={ticketId} />
 
+    const attachments = <TicketAttachments ticketId={ticketId} status={ticket.status} />
+
   const body = panel ? (
     <div className="space-y-4">
       {main}
       {details}
+      {attachments}
       {comments}
       {activity}
     </div>
@@ -299,6 +303,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         {main}
+        {attachments}
         {comments}
         {activity}
       </div>
