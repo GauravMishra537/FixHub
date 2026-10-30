@@ -5,6 +5,7 @@
 *-local.yml
 *-local.yaml
 *-local.properties
+scripts
 
 # Java / Maven
 backend/target/
