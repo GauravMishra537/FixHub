@@ -22,5 +22,11 @@ public enum NotificationType {
     TICKET_CLOSED,
     TICKET_REOPENED,
     TICKET_CANCELLED,
-    COMMENT_ADDED
+    COMMENT_ADDED,
+    // infra booking: a request waits for an admin (to admins), your booking was decided or cancelled
+    BOOKING_REQUESTED,
+    BOOKING_APPROVED,
+    BOOKING_REJECTED,
+    BOOKING_CANCELLED
+
 }

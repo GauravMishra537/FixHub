@@ -11,6 +11,8 @@ import com.fixhub.ticket.entity.TicketStatus;
 import com.fixhub.ticket.entity.WorkflowAction;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
+import com.fixhub.ticket.entity.TicketType;
+import com.fixhub.ticket.service.TicketLifecycleHook;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketRules;
 import com.fixhub.ticket.service.TicketService;
@@ -40,6 +42,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
     private final NotificationService notificationService;
     private final TicketWorkflow workflow;
     private final TicketRules rules;
+    private final List<TicketLifecycleHook> hooks;
 
     public TicketWorkflowServiceImpl(TicketRepository ticketRepository,
                                      TicketHistoryRepository historyRepository,
@@ -47,7 +50,8 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
                                      TicketService ticketService,
                                      NotificationService notificationService,
                                      TicketWorkflow workflow,
-                                     TicketRules rules) {
+                                     TicketRules rules,
+                                    List<TicketLifecycleHook> hooks) {
         this.ticketRepository = ticketRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
@@ -55,6 +59,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         this.notificationService = notificationService;
         this.workflow = workflow;
         this.rules = rules;
+        this.hooks=hooks;
     }
 
     @Override
@@ -78,9 +83,11 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         if (denied != null) {
             boolean involved = actor.id().equals(ticket.getAuthorId())
                     || actor.id().equals(ticket.getAssigneeId())
-                    || (actor.admin() && action == WorkflowAction.CONFIRM);
-            throw new ResponseStatusException(involved ? HttpStatus.CONFLICT : HttpStatus.FORBIDDEN, denied);
-        }
+                    || (actor.admin() && (action == WorkflowAction.CONFIRM
+                            || action == WorkflowAction.APPROVE
+                            || action == WorkflowAction.REJECT
+                            || action == WorkflowAction.CANCEL));
+                    }
 
         String note = request.getNote() == null ? "" : request.getNote().trim();
         if (action.noteRequired() && note.isEmpty()) {
@@ -91,7 +98,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         }
 
         TicketStatus before = ticket.getStatus();
-        TicketStatus after = workflow.targetStatus(action);
+        TicketStatus after = workflow.targetStatus(ticket.getType(), action);
         Instant now = Instant.now();
 
         ticket.setStatus(after);
@@ -108,6 +115,13 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         }
         // flush now so the new version number is in the answer
         ticketRepository.saveAndFlush(ticket);
+
+                // a type with its own rows (infra sessions) follows the status here, in the same transaction
+        for (TicketLifecycleHook hook : hooks) {
+            if (hook.type() == ticket.getType()) {
+                hook.onTransition(ticket, action, before, after, actor.id(), note);
+            }
+        }
 
         log(ticketId, actor.id(), before, after, note);
         notifyOtherSide(ticket, action, actor.id(), note);
@@ -136,6 +150,11 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         String label = ticket.getTicketNo() + " (" + ticket.getTitle() + ")";
         String reason = note.isEmpty() ? "" : ": " + note;
 
+        if (ticket.getType() == TicketType.INFRA_BOOKING) {
+            notifyInfra(ticket, action, actorId, who, label, reason);
+            return;
+        }
+
         switch (action) {
             case START -> tell(ticket.getAuthorId(), actorId, NotificationType.TICKET_STATUS, ticket,
                     who + " started work on " + label);
@@ -156,6 +175,24 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
                     who + " reopened " + label + reason);
             case CANCEL -> tell(ticket.getAssigneeId(), actorId, NotificationType.TICKET_CANCELLED, ticket,
                     who + " cancelled " + label);
+
+            default ->{}
+        }
+    }
+
+        // infra booking: the author hears the admin's decision. the admins hear a cancel through the infra hook
+    private void notifyInfra(Ticket ticket, WorkflowAction action, Long actorId,
+                             String who, String label, String reason) {
+        switch (action) {
+            case APPROVE -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_APPROVED, ticket,
+                    label + " was approved");
+            case REJECT -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_REJECTED, ticket,
+                    label + " was rejected" + reason);
+            case CANCEL -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_CANCELLED, ticket,
+                    who + " cancelled " + label + reason);
+            default -> {
+                // no other action exists for infra booking
+            }
         }
     }
 

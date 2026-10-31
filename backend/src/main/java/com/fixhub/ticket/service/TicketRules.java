@@ -53,13 +53,13 @@ public class TicketRules {
 
     static {
         INITIAL_STATUS.put(TicketType.ISSUE, TicketStatus.NEW);
-        INITIAL_STATUS.put(TicketType.ROOM_BOOKING, TicketStatus.PENDING_APPROVAL);
+       INITIAL_STATUS.put(TicketType.INFRA_BOOKING, TicketStatus.PENDING_APPROVAL);
         INITIAL_STATUS.put(TicketType.RESOURCE_REQUEST, TicketStatus.PENDING_APPROVAL);
         INITIAL_STATUS.put(TicketType.TOPIC_REQUEST, TicketStatus.OPEN);
 
         EDITABLE.put(TicketType.ISSUE,
-                Set.of(TicketStatus.NEW, TicketStatus.OPEN, TicketStatus.ASSIGNED));
-        EDITABLE.put(TicketType.ROOM_BOOKING, Set.of(TicketStatus.PENDING_APPROVAL));
+        Set.of(TicketStatus.NEW, TicketStatus.OPEN, TicketStatus.ASSIGNED));
+        EDITABLE.put(TicketType.INFRA_BOOKING, Set.of(TicketStatus.PENDING_APPROVAL));
         EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of(TicketStatus.PENDING_APPROVAL));
         EDITABLE.put(TicketType.TOPIC_REQUEST, Set.of(TicketStatus.OPEN));
     }

@@ -20,7 +20,7 @@ export const ticketApi = {
 
 export const TICKET_TYPES = [
   { key: 'ISSUE', label: 'Issue' },
-  { key: 'ROOM_BOOKING', label: 'Infra booking' },
+  { key: 'INFRA_BOOKING', label: 'Infra booking' },
   { key: 'RESOURCE_REQUEST', label: 'Resource request' },
   { key: 'TOPIC_REQUEST', label: 'Topic request' },
 ]

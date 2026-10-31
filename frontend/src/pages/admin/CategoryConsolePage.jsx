@@ -5,7 +5,7 @@ import SelectMenu from '../../components/common/SelectMenu'
 
 const TYPE_OPTIONS = [
   { value: 'ISSUE', label: 'Issues' },
-  { value: 'ROOM_BOOKING', label: 'Infra bookings' },
+  { value: 'INFRA_BOOKING', label: 'Infra bookings' },
   { value: 'RESOURCE_REQUEST', label: 'Resource requests' },
   { value: 'TOPIC_REQUEST', label: 'Topic requests' },
 ]

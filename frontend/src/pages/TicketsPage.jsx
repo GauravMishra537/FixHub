@@ -7,7 +7,7 @@ import TicketDrawer from '../components/tickets/TicketDrawer'
 
 /**
  * Tickets as simple rows. A row click opens the side panel.
- * type: ISSUE, ROOM_BOOKING, RESOURCE_REQUEST or TOPIC_REQUEST. Leave it out for every type.
+ * type: ISSUE, INFRA_BOOKING, RESOURCE_REQUEST or TOPIC_REQUEST. Leave it out for every type.
  * title: the heading in the filter bar.
  */
 export default function TicketsPage({ type, title = 'All tickets' }) {

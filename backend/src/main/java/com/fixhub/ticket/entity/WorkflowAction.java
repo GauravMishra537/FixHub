@@ -1,6 +1,6 @@
 package com.fixhub.ticket.entity;
 
-/** A move the person working on a ticket, or the person who raised it, can make. */
+/** A move the person working on a ticket, the person who raised it, or an admin can make. */
 public enum WorkflowAction {
 
     START("Start work", false),
@@ -9,7 +9,10 @@ public enum WorkflowAction {
     RESOLVE("Mark resolved", true),
     CONFIRM("Confirm and close", false),
     REOPEN("Reopen", true),
-    CANCEL("Cancel ticket", false);
+    CANCEL("Cancel ticket", false),
+    // infra booking: the admin decides
+    APPROVE("Approve", false),
+    REJECT("Reject", true);
 
     private final String label;
     private final boolean noteRequired;
