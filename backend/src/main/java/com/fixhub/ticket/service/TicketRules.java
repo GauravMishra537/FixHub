@@ -59,7 +59,7 @@ public class TicketRules {
 
         EDITABLE.put(TicketType.ISSUE,
         Set.of(TicketStatus.NEW, TicketStatus.OPEN, TicketStatus.ASSIGNED));
-        EDITABLE.put(TicketType.INFRA_BOOKING, Set.of(TicketStatus.PENDING_APPROVAL));
+        EDITABLE.put(TicketType.INFRA_BOOKING, Set.of());
         EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of(TicketStatus.PENDING_APPROVAL));
         EDITABLE.put(TicketType.TOPIC_REQUEST, Set.of(TicketStatus.OPEN));
     }

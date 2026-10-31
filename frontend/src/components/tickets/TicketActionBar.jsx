@@ -14,8 +14,10 @@ const KIND = {
   RESUME: 'primary',
   RESOLVE: 'success',
   CONFIRM: 'success',
+  APPROVE: 'success',
   HOLD: 'outline',
   REOPEN: 'danger',
+  REJECT: 'danger',
   CANCEL: 'danger',
 }
 
@@ -24,16 +26,19 @@ const ASK = {
   HOLD: 'Why is it on hold?',
   RESOLVE: 'What was done to fix it?',
   REOPEN: 'Why is it not fixed?',
+  REJECT: 'Why is it rejected?',
 }
 
 /**
  * Buttons the server says this person may press now (ticket.actions).
  * A button that needs a reason opens a small box first.
+ * Cancel asks "are you sure" inside the page, not in a browser popup.
  * onDone(updatedTicket): called after a successful move. onDone(null) after Reload.
  */
 export default function TicketActionBar({ ticket, onDone }) {
   const actions = ticket.actions || []
   const [asking, setAsking] = useState(null) // { action, label, note }
+  const [confirming, setConfirming] = useState(null) // the action waiting for "yes"
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -47,8 +52,10 @@ export default function TicketActionBar({ ticket, onDone }) {
     try {
       const updated = await ticketCoreApi.transition(ticket.id, action, note, ticket.version)
       setAsking(null)
+      setConfirming(null)
       await onDone(updated)
     } catch (e) {
+      setConfirming(null)
       setError(e.message || 'Action failed')
     } finally {
       setBusy(false)
@@ -60,9 +67,17 @@ export default function TicketActionBar({ ticket, onDone }) {
       setAsking({ action: a.action, label: a.label, note: '' })
       return
     }
-    if (a.action === 'CANCEL' && !window.confirm('Cancel this ticket?')) return
+    if (a.action === 'CANCEL') {
+      setConfirming(a)
+      return
+    }
     run(a.action, '')
   }
+
+  const cancelText =
+    ticket.type === 'INFRA_BOOKING'
+      ? 'Cancel this booking? Sessions that have not started are released.'
+      : 'Cancel this ticket?'
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -79,7 +94,7 @@ export default function TicketActionBar({ ticket, onDone }) {
         </div>
       )}
 
-      {!asking && (
+      {!asking && !confirming && (
         <div className="mt-3 flex flex-wrap gap-2">
           {actions.map((a) => (
             <button
@@ -95,6 +110,31 @@ export default function TicketActionBar({ ticket, onDone }) {
               {a.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {confirming && (
+        <div className="mt-3 space-y-3">
+          <p className="text-sm text-slate-700">{cancelText}</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => run(confirming.action, '')}
+              className={`inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 ${STYLE.danger}`}
+            >
+              {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Yes, cancel
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirming(null)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+            >
+              Back
+            </button>
+          </div>
         </div>
       )}
 

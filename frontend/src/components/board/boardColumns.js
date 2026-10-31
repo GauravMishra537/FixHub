@@ -60,6 +60,8 @@ export const ALL_COLUMNS = [
 export const STATUS_OPTIONS = [
   { value: 'NEW', label: 'New' },
   { value: 'OPEN', label: 'Open' },
+  { value: 'PENDING_APPROVAL', label: 'Pending approval' },
+  { value: 'APPROVED', label: 'Approved' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'ON_HOLD', label: 'On hold' },

@@ -13,6 +13,8 @@ import com.fixhub.infra.service.InfraCatalogService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.fixhub.infra.dto.BoardDto;
+import com.fixhub.infra.service.BoardService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,13 +36,16 @@ public class InfraController {
     private final InfraCatalogService catalogService;
     private final AvailabilityService availabilityService;
     private final BookingService bookingService;
+    private final BoardService boardService;
 
     public InfraController(InfraCatalogService catalogService,
                            AvailabilityService availabilityService,
-                           BookingService bookingService) {
+                           BookingService bookingService,
+                           BoardService boardService) {
         this.catalogService = catalogService;
         this.availabilityService = availabilityService;
         this.bookingService = bookingService;
+        this.boardService = boardService;
     }
 
     // the cards on the booking page: switched on kinds only
@@ -81,5 +86,17 @@ public class InfraController {
             Authentication authentication) {
         return ResponseEntity.ok(ApiResponse.success(
                 bookingService.getSessions(ticketId, InfraActors.of(user, authentication))));
+    }
+
+        // booked and empty units of one kind between from and to (usually one day)
+    @GetMapping("/board")
+    public ResponseEntity<ApiResponse<BoardDto>> board(
+            @RequestParam Long infraTypeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @AuthenticationPrincipal AuthUser user,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(
+                boardService.board(infraTypeId, from, to, InfraActors.of(user, authentication))));
     }
 }

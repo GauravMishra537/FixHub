@@ -11,6 +11,7 @@ import TicketAssignPanel from './TicketAssignPanel'
 import TicketActionBar from './TicketActionBar'
 import TicketComments from './TicketComments'
 import TicketAttachments from './TicketAttachments'
+import SessionsCard from '../../infra/components/SessionsCard'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -108,8 +109,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
 
   if (!ticket || !draft) return null
 
+  const infra = ticket.type === 'INFRA_BOOKING'
   const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
-  const canTriage = Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
+  const canTriage = !infra && Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
   const original = fromTicket(ticket)
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(original))
   const problem = !draft.title.trim()
@@ -174,10 +176,10 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
 {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-{!isAdmin && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+{!isAdmin && !infra && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
 
-{/* Only show the Assign Panel if the user is an admin and the ticket can be triaged */}
-{isAdmin && ticket.canTriage && (
+{/* Only show the Assign Panel if the user is an admin and the ticket can be triaged. Bookings are not assigned */}
+{isAdmin && !infra && ticket.canTriage && (
   <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
 )}
 
@@ -271,8 +273,8 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         </Field>
 
         <Field label="Author">{ticket.authorName}</Field>
-        <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>
-        <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>
+                {!infra && <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>}
+        {!infra && <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>}
         <Field label="Created">{formatDateTime(ticket.createdOn)}</Field>
         <Field label="Last updated">{formatDateTime(ticket.updatedOn)}</Field>
         {ticket.resolvedOn && <Field label="Resolved">{formatDateTime(ticket.resolvedOn)}</Field>}
@@ -289,11 +291,16 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   )
     const comments = <TicketComments ticketId={ticketId} />
 
-    const attachments = <TicketAttachments ticketId={ticketId} status={ticket.status} />
+        const attachments = infra ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
+
+      const sessions = infra ? (
+    <SessionsCard ticketId={ticketId} refreshKey={ticket.version} isAdmin={isAdmin} onChanged={afterAction} />
+  ) : null
 
   const body = panel ? (
     <div className="space-y-4">
       {main}
+      {sessions}
       {details}
       {attachments}
       {comments}
@@ -303,6 +310,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
         {main}
+        {sessions}
         {attachments}
         {comments}
         {activity}

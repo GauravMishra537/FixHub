@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route ,Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import Layout from './components/layout/Layout'
@@ -24,6 +24,12 @@ import TicketDetailsPage from './pages/TicketDetailsPage'
 import AdminTicketsPage from './pages/admin/AdminTicketsPage'
 import TicketsPage from './pages/TicketsPage'
 import UserPage from './pages/admin/UserPage'
+import BookingFormPage from './infra/pages/BookingFormPage'
+import KindPage from './infra/pages/KindPage'
+import InfraPage from './infra/pages/InfraPage'
+import InfraBoardPage from './infra/pages/InfraBoardPage'
+import InfraCatalogPage from './infra/pages/InfraCatalogPage'
+import AdminInfraHub from './infra/pages/AdminInfraHub'
 import CategoryConsolePage from './pages/admin/CategoryConsolePage'
 import RegistrationPage from './pages/admin/RegistrationPage'
 import TicketHistoryPage from './pages/admin/TicketHistoryPage'
@@ -46,7 +52,9 @@ export function App() {
               <Route path="issues/new" element={<CreateTicketPage />} />
               <Route path="tickets" element={<TicketsPage />} />
               <Route path="tickets/:id" element={<TicketDetailsPage />} />
-              <Route path="rooms" element={<ComingSoonPage title="Infra Booking" />} />
+              <Route path="infra" element={<InfraPage />} />
+              <Route path="infra/book/:typeId" element={<BookingFormPage />} />
+              <Route path="infra/board" element={<InfraBoardPage />} />
               <Route path="resources" element={<ComingSoonPage title="Resource Requests" />} />
               <Route path="topics" element={<ComingSoonPage title="Learning / Topic Requests" />} />
               <Route path="oauth/callback" element={<OAuthCallbackPage />} />
@@ -62,10 +70,16 @@ export function App() {
                 <Route path="admin/users" element={<UsersPage />} />
                 <Route path="admin/users/:id" element={<UserPage />} />
                 <Route path="admin/requests/:id" element={<RegistrationPage />} />
-               <Route path="admin/categories" element={<CategoryConsolePage />} />
+                <Route path="admin/categories" element={<CategoryConsolePage />} />
                 <Route path="admin/tickets" element={<AdminTicketsPage />} />
                 <Route path="admin/issues" element={<TicketsPage key="ISSUE" type="ISSUE" title="Issues" />} />
-               <Route path="admin/rooms" element={<TicketsPage key="INFRA_BOOKING" type="INFRA_BOOKING" title="Infra bookings" />} />
+                <Route path="admin/infra" element={<AdminInfraHub />}>
+                  <Route index element={<TicketsPage key="INFRA_BOOKING" type="INFRA_BOOKING" title="Infra bookings" />} />
+                  <Route path="board" element={<InfraBoardPage embedded />} />
+                  <Route path="catalog" element={<InfraCatalogPage />} />
+                  <Route path="catalog/:id" element={<KindPage />} />
+                </Route>
+                <Route path="admin/rooms" element={<Navigate to="/admin/infra" replace />} />
                 <Route path="admin/resources" element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
                 <Route path="admin/topics" element={<TicketsPage key="TOPIC_REQUEST" type="TOPIC_REQUEST" title="Topic requests" />} />
               </Route>

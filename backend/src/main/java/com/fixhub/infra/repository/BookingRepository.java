@@ -73,4 +73,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                                            Collection<BookingStatus> statuses,
                                                            Instant now);
 
+    // sessions holding a slot in a window, for the board
+    @Query("""
+            select b from Booking b
+            where b.infrastructureId in :unitIds
+              and b.status in :statuses
+              and b.startTime < :to
+              and b.endTime > :from
+            order by b.startTime
+            """)
+    List<Booking> findInWindow(@Param("unitIds") Collection<Long> unitIds,
+                               @Param("statuses") Collection<BookingStatus> statuses,
+                               @Param("from") Instant from,
+                               @Param("to") Instant to);
 }

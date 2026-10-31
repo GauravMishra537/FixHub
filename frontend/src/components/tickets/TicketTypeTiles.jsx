@@ -13,13 +13,12 @@ const TYPES = [
     iconBox: 'bg-red-100 text-red-600',
   },
   {
-    to: '/rooms',
+    to: '/infra',
     title: 'Infra Booking',
-    text: 'Book a meeting room',
+    text: 'Book a room, lab or space',
     icon: CalendarDays,
     box: 'bg-blue-50 border-blue-200 hover:border-blue-400',
     iconBox: 'bg-blue-100 text-blue-600',
-    soon: true,
   },
   {
     to: '/resources',

@@ -14,6 +14,8 @@ import {
   ListChecks,
   Wrench,
   CalendarDays,
+  LayoutGrid,
+  Settings2,
   Laptop,
   GraduationCap,
 } from 'lucide-react'
@@ -22,11 +24,10 @@ const ADMIN_LINKS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/issues', label: 'Issues', icon: Wrench },
-  { to: '/admin/rooms', label: 'Rooms', icon: CalendarDays },
+  { to: '/admin/infra', label: 'Infra', icon: CalendarDays },
   { to: '/admin/resources', label: 'Resources', icon: Laptop },
   { to: '/admin/topics', label: 'Topics', icon: GraduationCap },
 ]
-
 const USER_LINKS = [
   { to: '/', label: 'Dashboard', icon: Home, end: true },
   { to: '/tickets', label: 'All tickets', icon: ListChecks },
