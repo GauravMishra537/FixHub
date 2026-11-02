@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Globe, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { ticketCoreApi } from '../../api/ticketCore'
+import { infraApi } from '../../api/infra'
 import Alert from '../common/Alert'
 import EditBar from '../common/EditBar'
 import { EditableSelect, EditableText } from '../common/Editable'
@@ -16,6 +17,9 @@ import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
 import { PRIORITY_OPTIONS, VISIBILITY_OPTIONS } from '../../utils/options'
+
+// an infra ticket is still in play in these states
+const OPEN_INFRA = ['PENDING_APPROVAL', 'APPROVED', 'PARTIALLY_APPROVED']
 
 function Field({ label, children }) {
   return (
@@ -74,6 +78,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   const [ticket, setTicket] = useState(null)
   const [draft, setDraft] = useState(null)
   const [history, setHistory] = useState([])
+  const [sessionRows, setSessionRows] = useState(null) // infra only
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -85,9 +90,11 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     setLoadError('')
     try {
       const [t, h] = await Promise.all([ticketCoreApi.get(ticketId), ticketCoreApi.history(ticketId)])
+      const rows = t.type === 'INFRA_BOOKING' ? await infraApi.sessions(ticketId).catch(() => null) : null
       setTicket(t)
       setDraft(fromTicket(t))
       setHistory(h || [])
+      setSessionRows(rows)
     } catch (err) {
       setLoadError(err.message)
     } finally {
@@ -112,6 +119,10 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   const infra = ticket.type === 'INFRA_BOOKING'
   const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
   const canTriage = !infra && Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
+  // infra: admin while the ticket is open. The author too: the server only gives Cancel to the author while it is open
+  const infraOpen = OPEN_INFRA.includes(ticket.status)
+  const canSettings =
+    infra && infraOpen && (isAdmin || (ticket.actions || []).some((a) => a.action === 'CANCEL'))
   const original = fromTicket(ticket)
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(original))
   const problem = !draft.title.trim()
@@ -135,6 +146,18 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     await load()
     onChanged?.(updated)
     window.dispatchEvent(new Event('tickets:changed'))
+  }
+
+  // infra priority and visibility: saved the moment it is picked
+  const saveSetting = (key) => async (value) => {
+    setSaveError('')
+    setNotice('')
+    try {
+      await infraApi.updateSettings(ticketId, { [key]: value, version: ticket.version })
+      await afterAction(null)
+    } catch (err) {
+      setSaveError(err.message)
+    }
   }
 
   const save = async () => {
@@ -162,6 +185,10 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     }
   }
 
+  const actionBar = (
+    <TicketActionBar ticket={ticket} onDone={afterAction} sessionCount={sessionRows ? sessionRows.length : 0} />
+  )
+
   const main = (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-2 text-sm font-semibold text-blue-700">{ticket.ticketNo}</div>
@@ -174,20 +201,17 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           </button>
         </div>
       )}
-{notice && !dirty && <Alert type="success">{notice}</Alert>}
+      {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-{!isAdmin && !infra && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+      {!isAdmin && !infra && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
 
-{/* Only show the Assign Panel if the user is an admin and the ticket can be triaged. Bookings are not assigned */}
-{isAdmin && !infra && ticket.canTriage && (
-  <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
-)}
+      {/* Bookings are not assigned */}
+      {isAdmin && !infra && ticket.canTriage && (
+        <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
+      )}
 
-{/* Always render the action bar so eligible users can click "Start work", "Mark resolved", etc. */}
-<TicketActionBar ticket={ticket} onDone={afterAction} />
-
-
-
+      {/* other tickets: buttons first. infra: title and description first, then the buttons */}
+      {!infra && actionBar}
 
       <div className="-ml-2">
         <EditableText
@@ -212,6 +236,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           placeholder={canEdit ? 'Click to add a description' : 'No description given.'}
         />
       </div>
+
+      {infra && <div className="mt-4">{actionBar}</div>}
+
       {canTriage && !dirty && (
         <p className="mt-3 text-xs text-slate-400">
           {canEdit ? 'Click any field to edit it.' : 'As admin you can change the category and the priority.'}
@@ -219,6 +246,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
     </div>
   )
+
+  const priorityValue = infra ? ticket.priority : draft.priority
+  const visibilityValue = infra ? ticket.visibility : draft.visibility
 
   const details = (
     <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -231,11 +261,11 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         <Field label="Priority">
           <div className="-ml-2">
             <EditableSelect
-              value={draft.priority}
-              onChange={set('priority')}
+              value={priorityValue}
+              onChange={infra ? saveSetting('priority') : set('priority')}
               options={PRIORITY_OPTIONS}
-              editable={canTriage}
-              renderValue={() => <PriorityBadge priority={draft.priority} />}
+              editable={infra ? canSettings : canTriage}
+              renderValue={() => <PriorityBadge priority={priorityValue} />}
             />
           </div>
         </Field>
@@ -243,13 +273,13 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         <Field label="Visibility">
           <div className="-ml-2">
             <EditableSelect
-              value={draft.visibility}
-              onChange={set('visibility')}
+              value={visibilityValue}
+              onChange={infra ? saveSetting('visibility') : set('visibility')}
               options={VISIBILITY_OPTIONS}
-              editable={canEdit}
+              editable={infra ? canSettings : canEdit}
               renderValue={(label) => (
                 <span className="inline-flex items-center text-sm text-slate-800">
-                  {draft.visibility === 'PRIVATE' ? (
+                  {visibilityValue === 'PRIVATE' ? (
                     <Lock className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
                   ) : (
                     <Globe className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
@@ -273,7 +303,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         </Field>
 
         <Field label="Author">{ticket.authorName}</Field>
-                {!infra && <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>}
+        {!infra && <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>}
         {!infra && <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>}
         <Field label="Created">{formatDateTime(ticket.createdOn)}</Field>
         <Field label="Last updated">{formatDateTime(ticket.updatedOn)}</Field>
@@ -289,12 +319,13 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       <TicketTimeline items={history} />
     </div>
   )
-    const comments = <TicketComments ticketId={ticketId} />
 
-        const attachments = infra ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
+  const comments = <TicketComments ticketId={ticketId} />
 
-      const sessions = infra ? (
-    <SessionsCard ticketId={ticketId} refreshKey={ticket.version} isAdmin={isAdmin} onChanged={afterAction} />
+  const attachments = infra ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
+
+  const sessions = infra ? (
+    <SessionsCard rows={sessionRows} isAdmin={isAdmin} open={infraOpen} onChanged={afterAction} />
   ) : null
 
   const body = panel ? (

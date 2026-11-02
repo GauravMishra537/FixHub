@@ -3,21 +3,24 @@ package com.fixhub.infra.controller;
 import com.fixhub.common.auth.security.AuthUser;
 import com.fixhub.common.dto.ApiResponse;
 import com.fixhub.infra.dto.AvailabilityDto;
+import com.fixhub.infra.dto.BoardDto;
 import com.fixhub.infra.dto.BookingGroupDto;
 import com.fixhub.infra.dto.BookingRequestDto;
 import com.fixhub.infra.dto.BookingResponseDto;
+import com.fixhub.infra.dto.InfraSettingsDto;
+import com.fixhub.infra.dto.InfraSettingsRequestDto;
 import com.fixhub.infra.dto.InfraTypeDto;
 import com.fixhub.infra.service.AvailabilityService;
+import com.fixhub.infra.service.BoardService;
 import com.fixhub.infra.service.BookingService;
 import com.fixhub.infra.service.InfraCatalogService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import com.fixhub.infra.dto.BoardDto;
-import com.fixhub.infra.service.BoardService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -88,7 +91,18 @@ public class InfraController {
                 bookingService.getSessions(ticketId, InfraActors.of(user, authentication))));
     }
 
-        // booked and empty units of one kind between from and to (usually one day)
+    // priority and visibility. author or admin, while the ticket is not finished
+    @PatchMapping("/tickets/{ticketId}/settings")
+    public ResponseEntity<ApiResponse<InfraSettingsDto>> settings(
+            @PathVariable Long ticketId,
+            @RequestBody InfraSettingsRequestDto request,
+            @AuthenticationPrincipal AuthUser user,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success("Saved",
+                bookingService.updateSettings(ticketId, request, InfraActors.of(user, authentication))));
+    }
+
+    // booked and empty units of one kind between from and to (usually one day)
     @GetMapping("/board")
     public ResponseEntity<ApiResponse<BoardDto>> board(
             @RequestParam Long infraTypeId,

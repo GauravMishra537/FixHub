@@ -35,7 +35,7 @@ const ASK = {
  * Cancel asks "are you sure" inside the page, not in a browser popup.
  * onDone(updatedTicket): called after a successful move. onDone(null) after Reload.
  */
-export default function TicketActionBar({ ticket, onDone }) {
+export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
   const actions = ticket.actions || []
   const [asking, setAsking] = useState(null) // { action, label, note }
   const [confirming, setConfirming] = useState(null) // the action waiting for "yes"
@@ -45,6 +45,13 @@ export default function TicketActionBar({ ticket, onDone }) {
   if (actions.length === 0) return null
 
   const waitingForConfirm = actions.some((a) => a.action === 'CONFIRM')
+
+    // booking with several sessions: the buttons decide all of them
+  const labelOf = (a) => {
+    if (ticket.type !== 'INFRA_BOOKING' || (a.action !== 'APPROVE' && a.action !== 'REJECT')) return a.label
+    const word = a.action === 'APPROVE' ? 'Approve' : 'Reject'
+    return sessionCount > 1 ? `${word} all` : word
+  }
 
   const run = async (action, note) => {
     setBusy(true)
@@ -64,7 +71,7 @@ export default function TicketActionBar({ ticket, onDone }) {
 
   const press = (a) => {
     if (a.noteRequired) {
-      setAsking({ action: a.action, label: a.label, note: '' })
+            setAsking({ action: a.action, label: labelOf(a), note: '' })
       return
     }
     if (a.action === 'CANCEL') {
@@ -107,7 +114,7 @@ export default function TicketActionBar({ ticket, onDone }) {
               }`}
             >
               {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-              {a.label}
+                            {labelOf(a)}
             </button>
           ))}
         </div>

@@ -22,8 +22,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Called by the ticket workflow right after the ticket status changed.
- * Keeps the sessions in step: approve, reject and cancel apply to the whole group.
+ * Called by the ticket workflow before the ticket is saved.
+ * Approve all and reject all apply to the sessions still waiting. Cancel (author) applies to sessions not started.
+ * Returns the final ticket status, worked out from all sessions.
  */
 @Component
 public class BookingLifecycleHook implements TicketLifecycleHook {
@@ -49,11 +50,12 @@ public class BookingLifecycleHook implements TicketLifecycleHook {
     }
 
     @Override
-    public void onTransition(Ticket ticket, WorkflowAction action, TicketStatus from, TicketStatus to,
-                             Long actorId, String note) {
+    public TicketStatus onTransition(Ticket ticket, WorkflowAction action, TicketStatus from, TicketStatus to,
+                                     Long actorId, String note) {
         List<Booking> sessions = bookingRepository.findByTicketIdOrderByStartTimeAsc(ticket.getId());
         Instant now = Instant.now();
         String text = note == null || note.isBlank() ? null : note;
+        TicketStatus decided = null;
 
         switch (action) {
             case APPROVE -> {
@@ -74,10 +76,16 @@ public class BookingLifecycleHook implements TicketLifecycleHook {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
                             "Every session has already ended. Reject this request instead");
                 }
+                decided = BookingStatuses.resolve(sessions);
             }
-            case REJECT -> sessions.stream()
-                    .filter(b -> b.getStatus() == BookingStatus.PENDING)
-                    .forEach(b -> decide(b, BookingStatus.REJECTED, actorId, text));
+            case REJECT -> {
+                for (Booking b : sessions) {
+                    if (b.getStatus() == BookingStatus.PENDING) {
+                        decide(b, BookingStatus.REJECTED, actorId, text);
+                    }
+                }
+                decided = BookingStatuses.resolve(sessions);
+            }
             case CANCEL -> {
                 // sessions that already started stay as they were
                 List<Booking> open = sessions.stream()
@@ -96,6 +104,7 @@ public class BookingLifecycleHook implements TicketLifecycleHook {
             }
         }
         bookingRepository.saveAll(sessions);
+        return decided;
     }
 
     private void decide(Booking b, BookingStatus status, Long actorId, String note) {
@@ -105,7 +114,7 @@ public class BookingLifecycleHook implements TicketLifecycleHook {
         b.setDecisionNote(note);
     }
 
-    // an admin who cancels already told the author through the workflow. the author cancelling tells the admins here
+    // the author cancelling tells the admins here. an admin never cancels any more
     private void tellAdminsIfRequesterCancelled(Ticket ticket, Long actorId, String note) {
         List<Long> admins = adminRepository.findIdsByRole(Role.ADMIN);
         if (admins.contains(actorId)) {

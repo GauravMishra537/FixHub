@@ -48,7 +48,11 @@ export const infraApi = {
   updateUnit: (id, body) => apiClient(`/admin/infra/units/${id}`, send('PUT', body)),
   deleteUnit: (id) => apiClient(`/admin/infra/units/${id}`, send('DELETE')),
 
-  // admin cancels one session with a reason
-  cancelSession: (bookingId, note) =>
-    apiClient(`/admin/infra/bookings/${bookingId}/cancel`, send('POST', { note })),
+  // admin decides one session. reject needs a reason, the author is told
+  approveSession: (bookingId) => apiClient(`/admin/infra/bookings/${bookingId}/approve`, send('POST', {})),
+  rejectSession: (bookingId, note) =>
+    apiClient(`/admin/infra/bookings/${bookingId}/reject`, send('POST', { note })),
+
+  // author or admin: { priority?, visibility?, version }
+  updateSettings: (ticketId, body) => apiClient(`/infra/tickets/${ticketId}/settings`, send('PATCH', body))
 }

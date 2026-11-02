@@ -86,4 +86,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                @Param("statuses") Collection<BookingStatus> statuses,
                                @Param("from") Instant from,
                                @Param("to") Instant to);
+
+
+        // pending tickets where no pending session is left in the future: nobody decided in time
+    @Query("""
+            select t.id from Ticket t
+            where t.type = com.fixhub.ticket.entity.TicketType.INFRA_BOOKING
+              and t.status = com.fixhub.ticket.entity.TicketStatus.PENDING_APPROVAL
+              and not exists (select 1 from Booking b where b.ticketId = t.id
+                              and b.status = com.fixhub.infra.entity.BookingStatus.PENDING
+                              and b.endTime > :now)
+            """)
+    List<Long> findExpiredPendingTicketIds(@Param("now") Instant now);
 }

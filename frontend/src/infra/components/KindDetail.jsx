@@ -239,7 +239,7 @@ export default function KindDetail({ kind, onChanged, onRemoved }) {
                       <span className="text-xs text-slate-500">{u.capacity} seats</span>
                       {u.status !== 'ACTIVE' && (
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          Switched off
+                          Hidden
                         </span>
                       )}
                     </div>
@@ -249,7 +249,7 @@ export default function KindDetail({ kind, onChanged, onRemoved }) {
                     {u.upcomingBookings > 0 && (
                       <div className="text-xs text-amber-700">
                         {u.upcomingBookings} upcoming {u.upcomingBookings === 1 ? 'session' : 'sessions'}. They stay
-                        booked if you switch this unit off.
+                        booked if you hide this unit.
                       </div>
                     )}
                   </div>
@@ -272,7 +272,7 @@ export default function KindDetail({ kind, onChanged, onRemoved }) {
                       }
                       className={SMALL}
                     >
-                      {u.status === 'ACTIVE' ? 'Switch off' : 'Switch on'}
+                      {u.status === 'ACTIVE' ? 'Hide' : 'Show'}
                     </button>
                     <button type="button" onClick={() => setConfirm({ kind: 'unit', id: u.id })} className={SMALL}>
                       Remove

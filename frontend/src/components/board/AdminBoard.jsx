@@ -12,7 +12,7 @@ import { PENDING_STATUSES, ACTIVE_STATUSES, STATUS_OPTIONS } from './boardColumn
 
 const PAGE = 10
 // resolved is not finished: it stays in Open until the requester or an admin closes it
-const RESOLVED_STATUSES = ['CLOSED', 'RETURNED']
+const RESOLVED_STATUSES = ['CLOSED', 'RETURNED', 'PARTIALLY_APPROVED']
 const REJECTED_STATUSES = ['REJECTED', 'CANCELLED']
 
 const GROUPS = [

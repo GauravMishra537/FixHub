@@ -67,7 +67,7 @@ export default function InfraCatalogPage() {
               onClick={() => setAdding(true)}
               className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
-              <Plus className="mr-1 h-4 w-4" /> Add a kind
+              <Plus className="mr-1 h-4 w-4" /> Add infra
             </button>
           )}
         </div>

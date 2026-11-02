@@ -2,7 +2,7 @@
 export const PENDING_STATUSES = ['NEW', 'OPEN', 'PENDING_APPROVAL']
 // RESOLVED stays here until the requester or an admin closes the ticket
 export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'RESOLVED', 'APPROVED', 'ISSUED', 'ACCEPTED']
-export const DONE_STATUSES = ['CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED']
+export const DONE_STATUSES = ['CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED', 'PARTIALLY_APPROVED']
 
 // clearable: finished cards get an X. badge: small violet text on every card of the column
 
@@ -62,6 +62,7 @@ export const STATUS_OPTIONS = [
   { value: 'OPEN', label: 'Open' },
   { value: 'PENDING_APPROVAL', label: 'Pending approval' },
   { value: 'APPROVED', label: 'Approved' },
+    { value: 'PARTIALLY_APPROVED', label: 'Partially approved' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'ON_HOLD', label: 'On hold' },

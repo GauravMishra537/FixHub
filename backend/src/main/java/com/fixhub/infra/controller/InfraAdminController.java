@@ -87,18 +87,4 @@ public class InfraAdminController {
         catalogService.deleteUnit(id);
         return ResponseEntity.noContent().build();
     }
-
-    // ---------- one session ----------
-
-    // cancel one session with a reason. the last one gone cancels the ticket
-    @PostMapping("/bookings/{bookingId}/cancel")
-    public ResponseEntity<ApiResponse<BookingResponseDto>> cancelSession(
-            @PathVariable Long bookingId,
-            @RequestBody SessionCancelRequestDto request,
-            @AuthenticationPrincipal AuthUser user,
-            Authentication authentication) {
-        BookingResponseDto cancelled = bookingService.cancelSession(
-                bookingId, request == null ? null : request.note(), InfraActors.of(user, authentication));
-        return ResponseEntity.ok(ApiResponse.success("Session cancelled", cancelled));
-    }
 }

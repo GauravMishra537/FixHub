@@ -101,6 +101,17 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         TicketStatus after = workflow.targetStatus(ticket.getType(), action);
         Instant now = Instant.now();
 
+        // a type with its own rows (infra sessions) updates them here, in the same transaction,
+        // and may decide another final status, for example partially approved
+        for (TicketLifecycleHook hook : hooks) {
+            if (hook.type() == ticket.getType()) {
+                TicketStatus decided = hook.onTransition(ticket, action, before, after, actor.id(), note);
+                if (decided != null) {
+                    after = decided;
+                }
+            }
+        }
+
         ticket.setStatus(after);
         switch (action) {
             case RESOLVE -> ticket.setResolvedOn(now);
@@ -115,13 +126,6 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         }
         // flush now so the new version number is in the answer
         ticketRepository.saveAndFlush(ticket);
-
-                // a type with its own rows (infra sessions) follows the status here, in the same transaction
-        for (TicketLifecycleHook hook : hooks) {
-            if (hook.type() == ticket.getType()) {
-                hook.onTransition(ticket, action, before, after, actor.id(), note);
-            }
-        }
 
         log(ticketId, actor.id(), before, after, note);
         notifyOtherSide(ticket, action, actor.id(), note);
@@ -180,14 +184,22 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         }
     }
 
-        // infra booking: the author hears the admin's decision. the admins hear a cancel through the infra hook
+    // infra booking: the author hears the admin's decision. the admins hear a cancel through the infra hook
     private void notifyInfra(Ticket ticket, WorkflowAction action, Long actorId,
                              String who, String label, String reason) {
         switch (action) {
-            case APPROVE -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_APPROVED, ticket,
-                    label + " was approved");
-            case REJECT -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_REJECTED, ticket,
-                    label + " was rejected" + reason);
+            case APPROVE, REJECT -> {
+                String what = switch (ticket.getStatus()) {
+                    case APPROVED -> "was approved";
+                    case PARTIALLY_APPROVED -> "was partially approved";
+                    case REJECTED -> "was rejected";
+                    default -> "was decided";
+                };
+                NotificationType type = ticket.getStatus() == TicketStatus.REJECTED
+                        ? NotificationType.BOOKING_REJECTED
+                        : NotificationType.BOOKING_APPROVED;
+                tell(ticket.getAuthorId(), actorId, type, ticket, label + " " + what + reason);
+            }
             case CANCEL -> tell(ticket.getAuthorId(), actorId, NotificationType.BOOKING_CANCELLED, ticket,
                     who + " cancelled " + label + reason);
             default -> {

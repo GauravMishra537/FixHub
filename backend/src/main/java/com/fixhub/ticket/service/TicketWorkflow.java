@@ -52,15 +52,15 @@ public class TicketWorkflow {
         RULES.put(TicketType.ISSUE, issue);
 
         // ---------- infra booking ----------
-        // the whole group is approved or rejected together. closing after the last session is done by a job
+       // the admin approves or rejects. the author can cancel. closing after the last session is done by a job
         Map<WorkflowAction, Rule> infra = new EnumMap<>(WorkflowAction.class);
         infra.put(WorkflowAction.APPROVE,
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL), TicketStatus.APPROVED, By.ADMIN));
         infra.put(WorkflowAction.REJECT,
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL), TicketStatus.REJECTED, By.ADMIN));
         infra.put(WorkflowAction.CANCEL,
-                new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.APPROVED),
-                        TicketStatus.CANCELLED, By.REQUESTER_OR_ADMIN));
+                new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.APPROVED, TicketStatus.PARTIALLY_APPROVED),
+                        TicketStatus.CANCELLED, By.REQUESTER));
         RULES.put(TicketType.INFRA_BOOKING, infra);
     }
 

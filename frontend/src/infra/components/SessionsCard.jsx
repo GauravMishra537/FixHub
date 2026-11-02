@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { infraApi } from '../../api/infra'
 
@@ -21,45 +21,37 @@ function when(b) {
 }
 
 /**
- * The sessions of an infra ticket: unit, time, status, reasons.
- * Admin can cancel a session that has not ended, with a reason.
- * refreshKey: goes up when the ticket changed (approve, reject), so the list loads again.
- * onChanged(): called after an admin cancel so the ticket page reloads.
+ * The sessions of an infra ticket. The ticket page loads the rows and passes them in.
+ * Admin, while the ticket is open:
+ *   Approve              a pending session that has not ended
+ *   Reject and notify    a pending session, or an approved one that has not started. A reason is required.
+ * rows: sessions or null while loading. open: the ticket is still pending, approved or partly approved.
+ * onChanged(): called after a decision so the ticket page loads again.
  */
-export default function SessionsCard({ ticketId, refreshKey, isAdmin, onChanged }) {
-  const [rows, setRows] = useState(null)
+export default function SessionsCard({ rows, isAdmin, open, onChanged }) {
+  const [rejecting, setRejecting] = useState(null) // { id, note }
+  const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
-  const [cancelling, setCancelling] = useState(null) // { id, note }
-  const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      setRows(await infraApi.sessions(ticketId))
-      setError('')
-    } catch (e) {
-      setError(e.message || 'Could not load sessions')
-    }
-  }, [ticketId])
+  const now = new Date()
+  const canApprove = (b) => isAdmin && open && b.status === 'PENDING' && new Date(b.endTime) > now
+  const canReject = (b) =>
+    isAdmin &&
+    open &&
+    ((b.status === 'PENDING' && new Date(b.endTime) > now) ||
+      (b.status === 'APPROVED' && new Date(b.startTime) > now))
 
-  useEffect(() => {
-    load()
-  }, [load, refreshKey])
-
-  const canCancel = (b) =>
-    isAdmin && (b.status === 'PENDING' || b.status === 'APPROVED') && new Date(b.endTime) > new Date()
-
-  const cancel = async () => {
-    setBusy(true)
+  const run = async (id, call) => {
+    setBusyId(id)
     setError('')
     try {
-      await infraApi.cancelSession(cancelling.id, cancelling.note.trim())
-      setCancelling(null)
-      await load()
+      await call()
+      setRejecting(null)
       await onChanged?.(null)
     } catch (e) {
-      setError(e.message || 'Could not cancel')
+      setError(e.message || 'Could not save')
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
 
@@ -73,7 +65,7 @@ export default function SessionsCard({ ticketId, refreshKey, isAdmin, onChanged 
         <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
       )}
 
-      {!rows && !error && (
+      {!rows && (
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading...
         </div>
@@ -83,80 +75,99 @@ export default function SessionsCard({ ticketId, refreshKey, isAdmin, onChanged 
 
       {rows && rows.length > 0 && (
         <ul className="divide-y divide-slate-100">
-          {rows.map((b) => (
-            <li key={b.id} className="py-3 first:pt-0 last:pb-0">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-900">
-                    {b.unitName}
-                    <span className="ml-2 text-xs font-normal text-slate-500">{b.capacity} seats</span>
+          {rows.map((b) => {
+            const busy = busyId === b.id
+            return (
+              <li key={b.id} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-900">
+                      {b.unitName}
+                      <span className="ml-2 text-xs font-normal text-slate-500">{b.capacity} seats</span>
+                    </div>
+                    <div className="text-sm text-slate-600">{when(b)}</div>
                   </div>
-                  <div className="text-sm text-slate-600">{when(b)}</div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {b.oversize && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                      Bigger than needed
+                  <div className="flex items-center gap-1.5">
+                    {b.oversize && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                        Bigger than needed
+                      </span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[b.status] || BADGE.CANCELLED}`}>
+                      {LABEL[b.status] || b.status}
                     </span>
-                  )}
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[b.status] || BADGE.CANCELLED}`}>
-                    {LABEL[b.status] || b.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-1 text-xs text-slate-500">{b.headcount} people</div>
-              {b.reason && <div className="mt-1 text-xs text-slate-500">Reason: {b.reason}</div>}
-              {b.decisionNote && (
-                <div className="mt-1 text-xs text-slate-500">Admin note: {b.decisionNote}</div>
-              )}
-
-              {canCancel(b) && cancelling?.id !== b.id && (
-                <button
-                  type="button"
-                  onClick={() => setCancelling({ id: b.id, note: '' })}
-                  className="mt-2 text-xs font-semibold text-red-600 hover:underline"
-                >
-                  Cancel this session
-                </button>
-              )}
-
-              {cancelling?.id === b.id && (
-                <div className="mt-2 space-y-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Why is it cancelled?
-                  </label>
-                  <textarea
-                    autoFocus
-                    rows={2}
-                    maxLength={500}
-                    value={cancelling.note}
-                    onChange={(e) => setCancelling({ ...cancelling, note: e.target.value })}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={busy || !cancelling.note.trim()}
-                      onClick={cancel}
-                      className="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                      Cancel session
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setCancelling(null)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
-                    >
-                      Back
-                    </button>
                   </div>
                 </div>
-              )}
-            </li>
-          ))}
+
+                <div className="mt-1 text-xs text-slate-500">{b.headcount} people</div>
+                {b.reason && <div className="mt-1 text-xs text-slate-500">Reason: {b.reason}</div>}
+                {b.decisionNote && (
+                  <div className="mt-1 text-xs text-slate-500">Admin note: {b.decisionNote}</div>
+                )}
+
+                {rejecting?.id !== b.id && (canApprove(b) || canReject(b)) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {canApprove(b) && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => run(b.id, () => infraApi.approveSession(b.id))}
+                        className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Approve
+                      </button>
+                    )}
+                    {canReject(b) && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setRejecting({ id: b.id, note: '' })}
+                        className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Reject and notify
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {rejecting?.id === b.id && (
+                  <div className="mt-2 space-y-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Why is this session rejected? The requester is told.
+                    </label>
+                    <textarea
+                      autoFocus
+                      rows={2}
+                      maxLength={500}
+                      value={rejecting.note}
+                      onChange={(e) => setRejecting({ ...rejecting, note: e.target.value })}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={busy || !rejecting.note.trim()}
+                        onClick={() => run(b.id, () => infraApi.rejectSession(b.id, rejecting.note.trim()))}
+                        className="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                        Reject and notify
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setRejecting(null)}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2, Plus } from 'lucide-react'
 import { infraApi } from '../../api/infra'
 import SessionCard from '../components/SessionCard'
+import SelectMenu from '../../components/common/SelectMenu'
+import { PRIORITY_OPTIONS } from '../../utils/options'
 import {
   MAX_DAYS_AHEAD, addDays, isValidSession, needsLongReason, newSession, startOfDay, toRange,
 } from '../utils/time'
@@ -19,6 +21,8 @@ export default function BookingFormPage() {
   const [title, setTitle] = useState('')
   const [headcount, setHeadcount] = useState('')
   const [note, setNote] = useState('')
+  const [priority, setPriority] = useState('MEDIUM')
+  const [isPrivate, setIsPrivate] = useState(true)
   const [sessions, setSessions] = useState(() => [blank(0, newSession())])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -90,6 +94,8 @@ export default function BookingFormPage() {
         title: title.trim(),
         note: note.trim(),
         headcount: head,
+        priority,
+        visibility: isPrivate ? 'PRIVATE' : 'PUBLIC',
         sessions: body,
       })
       navigate(`/tickets/${created.ticketId}`, { replace: true })
@@ -162,6 +168,16 @@ export default function BookingFormPage() {
               You see the smallest unit that fits. Up to {type.maxCapacity} people in one {type.name}.
             </p>
           </div>
+
+                    <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
+            <SelectMenu value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+            Private (only me and admin can see it)
+          </label>
 
           <div className="space-y-3">
             {sessions.map((s, i) => (

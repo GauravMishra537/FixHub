@@ -16,8 +16,9 @@ public enum TicketStatus {
     CANCELLED,
     PENDING_APPROVAL,
     APPROVED,
+    PARTIALLY_APPROVED,
     REJECTED,
     ISSUED,
     RETURNED,
-    ACCEPTED
+    ACCEPTED,
 }

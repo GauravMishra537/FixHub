@@ -25,6 +25,10 @@ import com.fixhub.ticket.entity.TicketCategory;
 import com.fixhub.ticket.entity.TicketHistory;
 import com.fixhub.ticket.entity.TicketStatus;
 import com.fixhub.ticket.entity.TicketType;
+import com.fixhub.infra.dto.InfraSettingsDto;
+import com.fixhub.infra.dto.InfraSettingsRequestDto;
+import com.fixhub.ticket.entity.TicketPriority;
+import com.fixhub.ticket.entity.TicketVisibility;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
 import com.fixhub.ticket.service.TicketActor;
@@ -163,6 +167,13 @@ public class BookingServiceImpl implements BookingService {
         ticket.setDescription(note.isEmpty() ? null : note);
         ticket.setStatus(TicketStatus.PENDING_APPROVAL);
         ticket.setAuthorId(actor.id());
+                if (request.priority() != null) {
+            ticket.setPriority(request.priority());
+        }
+        if (request.visibility() != null) {
+            ticket.setVisibility(request.visibility());
+        }
+
         ticket.setCategoryId(categoryIdFor(type.getName()));
         ticket = ticketRepository.saveAndFlush(ticket);
 
@@ -294,14 +305,95 @@ public class BookingServiceImpl implements BookingService {
         return toDtos(bookingRepository.findByTicketIdOrderByStartTimeAsc(ticketId));
     }
 
-    // ---------- admin cancels one session ----------
+        // ---------- priority and visibility ----------
 
     @Override
     @Transactional
-    public BookingResponseDto cancelSession(Long bookingId, String note, TicketActor actor) {
-        if (!actor.admin()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an admin can cancel a single session");
+    public InfraSettingsDto updateSettings(Long ticketId, InfraSettingsRequestDto request, TicketActor actor) {
+        if (request == null || (request.priority() == null && request.visibility() == null)) {
+            throw bad("Choose a priority or a visibility");
         }
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        if (ticket.getType() != TicketType.INFRA_BOOKING) {
+            throw bad("This is not an infra booking");
+        }
+        if (!actor.admin() && !ticket.getAuthorId().equals(actor.id())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the author or an admin can change this");
+        }
+        TicketStatus s = ticket.getStatus();
+        if (s != TicketStatus.PENDING_APPROVAL && s != TicketStatus.APPROVED
+                && s != TicketStatus.PARTIALLY_APPROVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This ticket is finished and cannot be changed");
+        }
+        if (request.version() != null && !request.version().equals(ticket.getVersion())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This ticket changed while you were looking. Reload and try again");
+        }
+
+        TicketPriority oldPriority = ticket.getPriority();
+        TicketVisibility oldVisibility = ticket.getVisibility();
+        boolean priorityChanged = request.priority() != null && request.priority() != oldPriority;
+        boolean visibilityChanged = request.visibility() != null && request.visibility() != oldVisibility;
+        if (!priorityChanged && !visibilityChanged) {
+            return new InfraSettingsDto(oldPriority, oldVisibility, ticket.getVersion());
+        }
+        if (priorityChanged) {
+            ticket.setPriority(request.priority());
+        }
+        if (visibilityChanged) {
+            ticket.setVisibility(request.visibility());
+        }
+        ticket = ticketRepository.saveAndFlush(ticket);
+
+        if (priorityChanged) {
+            logSetting(ticketId, actor.id(), "priority", oldPriority.name(), request.priority().name());
+        }
+        if (visibilityChanged) {
+            logSetting(ticketId, actor.id(), "visibility", oldVisibility.name(), request.visibility().name());
+        }
+        return new InfraSettingsDto(ticket.getPriority(), ticket.getVisibility(), ticket.getVersion());
+    }
+
+    private void logSetting(Long ticketId, Long actorId, String field, String from, String to) {
+        TicketHistory row = new TicketHistory();
+        row.setTicketId(ticketId);
+        row.setActorId(actorId);
+        row.setAction(HistoryAction.UPDATED);
+        row.setFieldName(field);
+        row.setFromValue(from);
+        row.setToValue(to);
+        historyRepository.save(row);
+    }
+
+    // ---------- admin cancels one session ----------
+
+    // ---------- admin decides one session ----------
+
+    @Override
+    @Transactional
+    public BookingResponseDto approveSession(Long bookingId, TicketActor actor) {
+        requireAdmin(actor);
+        Booking b = findBooking(bookingId);
+        Ticket ticket = findOpenTicket(b);
+        if (b.getStatus() != BookingStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This session is already " + b.getStatus());
+        }
+        if (!b.getEndTime().isAfter(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This session already ended");
+        }
+        BookingStatus before = b.getStatus();
+        mark(b, BookingStatus.APPROVED, null, actor);
+        String unitName = unitName(b);
+        logSession(ticket.getId(), actor.id(), before, BookingStatus.APPROVED, unitName + " approved");
+        finishDecision(ticket, actor);
+        return toDtos(List.of(b)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDto rejectSession(Long bookingId, String note, TicketActor actor) {
+        requireAdmin(actor);
         String reason = clean(note);
         if (reason.isEmpty()) {
             throw bad("A reason is required");
@@ -309,61 +401,114 @@ public class BookingServiceImpl implements BookingService {
         if (reason.length() > MAX_REASON) {
             throw bad("Reason cannot exceed " + MAX_REASON + " characters");
         }
-        Booking b = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
-        if (!AvailabilityServiceImpl.HOLDING.contains(b.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This session is already " + b.getStatus());
+        Booking b = findBooking(bookingId);
+        Ticket ticket = findOpenTicket(b);
+        boolean pending = b.getStatus() == BookingStatus.PENDING;
+        boolean approvedNotStarted = b.getStatus() == BookingStatus.APPROVED
+                && b.getStartTime().isAfter(Instant.now());
+        if (!pending && !approvedNotStarted) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This session is " + b.getStatus() + " and cannot be rejected now");
         }
-        if (!b.getEndTime().isAfter(Instant.now())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This session already ended");
-        }
-
         BookingStatus before = b.getStatus();
-        b.setStatus(BookingStatus.CANCELLED);
-        b.setDecidedBy(actor.id());
-        b.setDecidedOn(Instant.now());
-        b.setDecisionNote(reason);
-        bookingRepository.saveAndFlush(b);
+        mark(b, BookingStatus.REJECTED, reason, actor);
+        String unitName = unitName(b);
+        logSession(ticket.getId(), actor.id(), before, BookingStatus.REJECTED,
+                cut(unitName + ": " + reason, MAX_REASON));
 
+        // the author hears about every rejection, with the reason
+        tell(ticket.getAuthorId(), actor.id(), NotificationType.BOOKING_REJECTED, ticket.getId(),
+                ticket.getTicketNo() + ": session on " + unitName + " was rejected. " + reason);
+        finishDecision(ticket, actor);
+        return toDtos(List.of(b)).get(0);
+    }
+
+    private void requireAdmin(TicketActor actor) {
+        if (!actor.admin()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only an admin can decide a session");
+        }
+    }
+
+    private Booking findBooking(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+    }
+
+    // the ticket must still be in play: pending, approved or partly approved
+    private Ticket findOpenTicket(Booking b) {
         Ticket ticket = ticketRepository.findById(b.getTicketId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
-        String unitName = unitRepository.findById(b.getInfrastructureId()).map(Infrastructure::getName).orElse("unit");
+        TicketStatus s = ticket.getStatus();
+        if (s != TicketStatus.PENDING_APPROVAL && s != TicketStatus.APPROVED
+                && s != TicketStatus.PARTIALLY_APPROVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This ticket is already " + s);
+        }
+        return ticket;
+    }
+
+    private void mark(Booking b, BookingStatus status, String note, TicketActor actor) {
+        b.setStatus(status);
+        b.setDecidedBy(actor.id());
+        b.setDecidedOn(Instant.now());
+        b.setDecisionNote(note);
+        bookingRepository.saveAndFlush(b);
+    }
+
+    private String unitName(Booking b) {
+        return unitRepository.findById(b.getInfrastructureId()).map(Infrastructure::getName).orElse("unit");
+    }
+
+    private void logSession(Long ticketId, Long actorId, BookingStatus from, BookingStatus to, String note) {
+        TicketHistory row = new TicketHistory();
+        row.setTicketId(ticketId);
+        row.setActorId(actorId);
+        row.setAction(HistoryAction.UPDATED);
+        row.setFieldName("session");
+        row.setFromValue(from.name());
+        row.setToValue(to.name());
+        row.setNote(cut(note, MAX_REASON));
+        historyRepository.save(row);
+    }
+
+    // recompute the ticket status from its sessions. when the last pending one is decided, one summary bell
+    private void finishDecision(Ticket ticket, TicketActor actor) {
+        List<Booking> all = bookingRepository.findByTicketIdOrderByStartTimeAsc(ticket.getId());
+        TicketStatus old = ticket.getStatus();
+        TicketStatus next = BookingStatuses.resolve(all);
+        if (next == null || next == old) {
+            return;
+        }
+        ticket.setStatus(next);
+        ticketRepository.saveAndFlush(ticket);
 
         TicketHistory row = new TicketHistory();
         row.setTicketId(ticket.getId());
         row.setActorId(actor.id());
         row.setAction(HistoryAction.UPDATED);
-        row.setFieldName("session");
-        row.setFromValue(before.name());
-        row.setToValue(BookingStatus.CANCELLED.name());
-        row.setNote(cut(unitName + ": " + reason, MAX_REASON));
+        row.setFieldName("status");
+        row.setFromValue(old.name());
+        row.setToValue(next.name());
+        row.setNote("Every session has a decision");
         historyRepository.save(row);
 
-        tell(ticket.getAuthorId(), actor.id(), NotificationType.BOOKING_CANCELLED, ticket.getId(),
-                userName(actor.id()) + " cancelled a session of " + ticket.getTicketNo() + " (" + unitName + "): " + reason);
-
-        // nothing left holding a slot: the ticket is cancelled too
-        boolean anyHeld = bookingRepository.findByTicketIdOrderByStartTimeAsc(ticket.getId()).stream()
-                .anyMatch(x -> AvailabilityServiceImpl.HOLDING.contains(x.getStatus()));
-        if (!anyHeld && (ticket.getStatus() == TicketStatus.PENDING_APPROVAL
-                || ticket.getStatus() == TicketStatus.APPROVED)) {
-            TicketStatus old = ticket.getStatus();
-            ticket.setStatus(TicketStatus.CANCELLED);
-            ticketRepository.saveAndFlush(ticket);
-
-            TicketHistory closed = new TicketHistory();
-            closed.setTicketId(ticket.getId());
-            closed.setActorId(actor.id());
-            closed.setAction(HistoryAction.UPDATED);
-            closed.setFieldName("status");
-            closed.setFromValue(old.name());
-            closed.setToValue(TicketStatus.CANCELLED.name());
-            closed.setNote("Last session was cancelled");
-            historyRepository.save(closed);
+        if (next == TicketStatus.PENDING_APPROVAL) {
+            return;
         }
-        return toDtos(List.of(b)).get(0);
-    }
-
+        long approved = all.stream().filter(x -> x.getStatus() == BookingStatus.APPROVED).count();
+        String text;
+        NotificationType kind = NotificationType.BOOKING_APPROVED;
+        if (next == TicketStatus.APPROVED) {
+            text = ticket.getTicketNo() + " (" + ticket.getTitle() + ") was approved";
+        } else if (next == TicketStatus.PARTIALLY_APPROVED) {
+            text = ticket.getTicketNo() + " (" + ticket.getTitle() + "): " + approved + " of "
+                    + all.size() + " sessions approved";
+        } else {
+            kind = NotificationType.BOOKING_REJECTED;
+            text = ticket.getTicketNo() + " (" + ticket.getTitle() + ") was rejected";
+        }
+        tell(ticket.getAuthorId(), actor.id(), kind, ticket.getId(), text);
+    }  
+    
     // ---------- helpers ----------
 
     private List<BookingResponseDto> toDtos(List<Booking> bookings) {
