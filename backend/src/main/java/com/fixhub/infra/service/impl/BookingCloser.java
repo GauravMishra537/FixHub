@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * Keeps booking tickets in step with the clock.
- * - approved, and every approved session has ended: ticket becomes CLOSED
+ * - approved or partially approved session has ended: ticket becomes CLOSED
  * - still pending, and every session has ended: ticket becomes CANCELLED (nobody decided in time)
  * Runs once when the app starts (catches up after the app was off) and then every 10 minutes.
  */
@@ -80,13 +80,15 @@ public class BookingCloser {
         int count = 0;
         for (Long id : ids) {
             Ticket ticket = ticketRepository.findById(id).orElse(null);
-            if (ticket == null || ticket.getStatus() != TicketStatus.APPROVED) {
+            if (ticket == null || (ticket.getStatus() != TicketStatus.APPROVED
+                    && ticket.getStatus() != TicketStatus.PARTIALLY_APPROVED)) {
                 continue;
             }
+            TicketStatus from = ticket.getStatus();
             ticket.setStatus(TicketStatus.CLOSED);
             ticket.setClosedOn(now);
             ticketRepository.save(ticket);
-            history(id, TicketStatus.APPROVED, TicketStatus.CLOSED, "All sessions ended");
+            history(id, from, TicketStatus.CLOSED, "All sessions ended");
             count++;
         }
         return count;

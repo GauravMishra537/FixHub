@@ -59,7 +59,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("""
             select t.id from Ticket t
             where t.type = com.fixhub.ticket.entity.TicketType.INFRA_BOOKING
-              and t.status = com.fixhub.ticket.entity.TicketStatus.APPROVED
+                 and t.status in (com.fixhub.ticket.entity.TicketStatus.APPROVED,
+                               com.fixhub.ticket.entity.TicketStatus.PARTIALLY_APPROVED)
               and exists (select 1 from Booking b where b.ticketId = t.id
                           and b.status = com.fixhub.infra.entity.BookingStatus.APPROVED)
               and not exists (select 1 from Booking b where b.ticketId = t.id
