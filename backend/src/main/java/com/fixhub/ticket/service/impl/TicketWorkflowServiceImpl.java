@@ -81,13 +81,8 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
 
         String denied = workflow.deniedReason(ticket, action, actor.id(), actor.admin());
         if (denied != null) {
-            boolean involved = actor.id().equals(ticket.getAuthorId())
-                    || actor.id().equals(ticket.getAssigneeId())
-                    || (actor.admin() && (action == WorkflowAction.CONFIRM
-                            || action == WorkflowAction.APPROVE
-                            || action == WorkflowAction.REJECT
-                            || action == WorkflowAction.CANCEL));
-                    }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, denied);
+        }
 
         String note = request.getNote() == null ? "" : request.getNote().trim();
         if (action.noteRequired() && note.isEmpty()) {
@@ -115,7 +110,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         ticket.setStatus(after);
         switch (action) {
             case RESOLVE -> ticket.setResolvedOn(now);
-            case CONFIRM -> ticket.setClosedOn(now);
+            case CONFIRM, CLOSE -> ticket.setClosedOn(now);
             case REOPEN -> {
                 ticket.setReopenCount(ticket.getReopenCount() + 1);
                 ticket.setResolvedOn(null);
@@ -153,6 +148,10 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         String who = userName(actorId);
         String label = ticket.getTicketNo() + " (" + ticket.getTitle() + ")";
         String reason = note.isEmpty() ? "" : ": " + note;
+
+        if (ticket.getType() == TicketType.RESOURCE_REQUEST) {
+            return;
+        }
 
         if (ticket.getType() == TicketType.INFRA_BOOKING) {
             notifyInfra(ticket, action, actorId, who, label, reason);

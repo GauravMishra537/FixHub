@@ -12,7 +12,12 @@ public enum WorkflowAction {
     CANCEL("Cancel ticket", false),
     // infra booking: the admin decides
     APPROVE("Approve", false),
-    REJECT("Reject", true);
+    REJECT("Reject", true),
+    // resource request: the department approver decides first, then the admin (APPROVE and REJECT above)
+    DEPT_APPROVE("Approve", false),
+    DEPT_REJECT("Reject", true),
+    // resource request: the author closes it once the item is received
+    CLOSE("Close", false);
 
     private final String label;
     private final boolean noteRequired;

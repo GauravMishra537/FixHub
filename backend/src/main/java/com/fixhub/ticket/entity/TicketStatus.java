@@ -15,10 +15,11 @@ public enum TicketStatus {
     CLOSED,
     CANCELLED,
     PENDING_APPROVAL,
+    DEPT_APPROVED,
     APPROVED,
     PARTIALLY_APPROVED,
     REJECTED,
     ISSUED,
     RETURNED,
-    ACCEPTED,
+    ACCEPTED
 }

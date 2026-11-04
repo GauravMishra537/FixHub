@@ -27,6 +27,12 @@ public enum NotificationType {
     BOOKING_REQUESTED,
     BOOKING_APPROVED,
     BOOKING_REJECTED,
-    BOOKING_CANCELLED
-
+    BOOKING_CANCELLED,
+    // resource request: the department approver is asked (only that person), admins are asked after the
+    // department approved, and the author hears the decision
+    RESOURCE_APPROVAL_NEEDED,
+    RESOURCE_DEPT_APPROVED,
+    RESOURCE_APPROVED,
+    RESOURCE_REJECTED,
+    RESOURCE_CANCELLED
 }

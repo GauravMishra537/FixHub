@@ -62,6 +62,25 @@ public class TicketWorkflow {
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.APPROVED, TicketStatus.PARTIALLY_APPROVED),
                         TicketStatus.CANCELLED, By.REQUESTER));
         RULES.put(TicketType.INFRA_BOOKING, infra);
+
+
+        // ---------- resource request ----------
+        // department person (the assignee) decides first, then an admin. the author closes and may cancel
+        Map<WorkflowAction, Rule> resource = new EnumMap<>(WorkflowAction.class);
+        resource.put(WorkflowAction.DEPT_APPROVE,
+                new Rule(Set.of(TicketStatus.PENDING_APPROVAL), TicketStatus.DEPT_APPROVED, By.ASSIGNEE));
+        resource.put(WorkflowAction.DEPT_REJECT,
+                new Rule(Set.of(TicketStatus.PENDING_APPROVAL), TicketStatus.REJECTED, By.ASSIGNEE));
+        resource.put(WorkflowAction.APPROVE,
+                new Rule(Set.of(TicketStatus.DEPT_APPROVED), TicketStatus.APPROVED, By.ADMIN));
+        resource.put(WorkflowAction.REJECT,
+                new Rule(Set.of(TicketStatus.DEPT_APPROVED), TicketStatus.REJECTED, By.ADMIN));
+        resource.put(WorkflowAction.CLOSE,
+                new Rule(Set.of(TicketStatus.APPROVED), TicketStatus.CLOSED, By.REQUESTER));
+        resource.put(WorkflowAction.CANCEL,
+                new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.DEPT_APPROVED, TicketStatus.APPROVED),
+                        TicketStatus.CANCELLED, By.REQUESTER));
+        RULES.put(TicketType.RESOURCE_REQUEST, resource);
     }
 
     /** Does this ticket type have a workflow yet? */

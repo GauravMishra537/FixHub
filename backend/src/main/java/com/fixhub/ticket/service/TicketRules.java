@@ -32,9 +32,9 @@ public class TicketRules {
 
     // dashboard groups
     private static final Set<TicketStatus> PENDING = Set.of(
-            TicketStatus.NEW, TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS,
-            TicketStatus.ON_HOLD, TicketStatus.REOPENED, TicketStatus.PENDING_APPROVAL,
-            TicketStatus.APPROVED, TicketStatus.ISSUED, TicketStatus.ACCEPTED);
+                TicketStatus.ON_HOLD, TicketStatus.REOPENED, TicketStatus.PENDING_APPROVAL,
+            TicketStatus.DEPT_APPROVED, TicketStatus.APPROVED, TicketStatus.PARTIALLY_APPROVED,
+            TicketStatus.ISSUED, TicketStatus.ACCEPTED);
 
     private static final Set<TicketStatus> RESOLVED = Set.of(
             TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.RETURNED);
@@ -62,6 +62,7 @@ public class TicketRules {
         EDITABLE.put(TicketType.INFRA_BOOKING, Set.of());
         EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of(TicketStatus.PENDING_APPROVAL));
         EDITABLE.put(TicketType.TOPIC_REQUEST, Set.of(TicketStatus.OPEN));
+        EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of());
     }
 
     // ---------- create ----------

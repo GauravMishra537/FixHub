@@ -19,6 +19,9 @@ const KIND = {
   REOPEN: 'danger',
   REJECT: 'danger',
   CANCEL: 'danger',
+  DEPT_APPROVE: 'success',
+  DEPT_REJECT: 'danger',
+  CLOSE: 'primary',
 }
 
 // question above the reason box
@@ -27,6 +30,7 @@ const ASK = {
   RESOLVE: 'What was done to fix it?',
   REOPEN: 'Why is it not fixed?',
   REJECT: 'Why is it rejected?',
+  DEPT_REJECT: 'Why is it rejected?',
 }
 
 /**
