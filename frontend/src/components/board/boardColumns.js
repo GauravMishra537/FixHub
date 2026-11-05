@@ -1,7 +1,7 @@
-// which statuses belong to which column. the admin board reuses these lists
-export const PENDING_STATUSES = ['NEW', 'OPEN', 'PENDING_APPROVAL']
-// RESOLVED stays here until the requester or an admin closes the ticket
-export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'RESOLVED', 'APPROVED', 'ISSUED', 'ACCEPTED']
+// DEPT_APPROVED = the department said yes, an admin decides next, so it still waits
+export const PENDING_STATUSES = ['NEW', 'OPEN', 'PENDING_APPROVAL', 'DEPT_APPROVED']
+// PARTIALLY_APPROVED (a booking with some sessions approved) stays open until its sessions end
+export const ACTIVE_STATUSES = ['ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'REOPENED', 'RESOLVED', 'APPROVED', 'PARTIALLY_APPROVED', 'ISSUED', 'ACCEPTED']
 export const DONE_STATUSES = ['CLOSED', 'RETURNED', 'CANCELLED', 'REJECTED']
 
 // clearable: finished cards get an X. badge: small violet text on every card of the column
@@ -61,8 +61,9 @@ export const STATUS_OPTIONS = [
   { value: 'NEW', label: 'New' },
   { value: 'OPEN', label: 'Open' },
   { value: 'PENDING_APPROVAL', label: 'Pending approval' },
+  { value: 'DEPT_APPROVED', label: 'Waiting for admin' },
   { value: 'APPROVED', label: 'Approved' },
-    { value: 'PARTIALLY_APPROVED', label: 'Partially approved' },
+  { value: 'PARTIALLY_APPROVED', label: 'Partially approved' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'ON_HOLD', label: 'On hold' },

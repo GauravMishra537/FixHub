@@ -3,6 +3,7 @@ import { Globe, Lock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { ticketCoreApi } from '../../api/ticketCore'
 import { infraApi } from '../../api/infra'
+import { resourcesApi } from '../../api/resources'
 import Alert from '../common/Alert'
 import EditBar from '../common/EditBar'
 import { EditableSelect, EditableText } from '../common/Editable'
@@ -13,6 +14,7 @@ import TicketActionBar from './TicketActionBar'
 import TicketComments from './TicketComments'
 import TicketAttachments from './TicketAttachments'
 import SessionsCard from '../../infra/components/SessionsCard'
+import RequestCard from '../../infra/components/RequestCard'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -20,6 +22,9 @@ import { PRIORITY_OPTIONS, VISIBILITY_OPTIONS } from '../../utils/options'
 
 // an infra ticket is still in play in these states
 const OPEN_INFRA = ['PENDING_APPROVAL', 'APPROVED', 'PARTIALLY_APPROVED']
+
+// a resource request is still in play in these states. the author can cancel, admin can still reject
+const OPEN_RESOURCE = ['PENDING_APPROVAL', 'DEPT_APPROVED', 'APPROVED']
 
 function Field({ label, children }) {
   return (
@@ -117,12 +122,15 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   if (!ticket || !draft) return null
 
   const infra = ticket.type === 'INFRA_BOOKING'
+  const resource = ticket.type === 'RESOURCE_REQUEST'
+  const special = infra || resource // not assigned, no attachments, priority and visibility saved at once
   const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
-  const canTriage = !infra && Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
-  // infra: admin while the ticket is open. The author too: the server only gives Cancel to the author while it is open
+  const canTriage = !special && Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
+  // infra and resource: admin while the ticket is open. The author too: the server only gives Cancel to the author while it is open
   const infraOpen = OPEN_INFRA.includes(ticket.status)
+  const specialOpen = infra ? infraOpen : resource && OPEN_RESOURCE.includes(ticket.status)
   const canSettings =
-    infra && infraOpen && (isAdmin || (ticket.actions || []).some((a) => a.action === 'CANCEL'))
+    special && specialOpen && (isAdmin || (ticket.actions || []).some((a) => a.action === 'CANCEL'))
   const original = fromTicket(ticket)
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(original))
   const problem = !draft.title.trim()
@@ -153,7 +161,8 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     setSaveError('')
     setNotice('')
     try {
-      await infraApi.updateSettings(ticketId, { [key]: value, version: ticket.version })
+      const api = resource ? resourcesApi : infraApi
+      await api.updateSettings(ticketId, { [key]: value, version: ticket.version })
       await afterAction(null)
     } catch (err) {
       setSaveError(err.message)
@@ -203,10 +212,10 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
       {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-      {!isAdmin && !infra && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+      {!isAdmin && !special && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
 
       {/* Bookings are not assigned */}
-      {isAdmin && !infra && ticket.canTriage && (
+      {isAdmin && !special && ticket.canTriage && (
         <TicketAssignPanel ticket={ticket} refreshKey={ticket.version} onDone={afterAction} />
       )}
 
@@ -247,8 +256,8 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
     </div>
   )
 
-  const priorityValue = infra ? ticket.priority : draft.priority
-  const visibilityValue = infra ? ticket.visibility : draft.visibility
+  const priorityValue = special ? ticket.priority : draft.priority
+  const visibilityValue = special ? ticket.visibility : draft.visibility
 
   const details = (
     <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -262,9 +271,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           <div className="-ml-2">
             <EditableSelect
               value={priorityValue}
-              onChange={infra ? saveSetting('priority') : set('priority')}
+             onChange={special ? saveSetting('priority') : set('priority')}
               options={PRIORITY_OPTIONS}
-              editable={infra ? canSettings : canTriage}
+              editable={special ? canSettings : canTriage}
               renderValue={() => <PriorityBadge priority={priorityValue} />}
             />
           </div>
@@ -274,9 +283,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           <div className="-ml-2">
             <EditableSelect
               value={visibilityValue}
-              onChange={infra ? saveSetting('visibility') : set('visibility')}
+              onChange={special ? saveSetting('visibility') : set('visibility')}
               options={VISIBILITY_OPTIONS}
-              editable={infra ? canSettings : canEdit}
+              editable={special? canSettings : canEdit}
               renderValue={(label) => (
                 <span className="inline-flex items-center text-sm text-slate-800">
                   {visibilityValue === 'PRIVATE' ? (
@@ -322,10 +331,13 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
 
   const comments = <TicketComments ticketId={ticketId} />
 
-  const attachments = infra ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
+  const attachments = special ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
 
+  // infra shows its sessions, a resource request shows its Request card. Same place on the page
   const sessions = infra ? (
     <SessionsCard rows={sessionRows} isAdmin={isAdmin} open={infraOpen} onChanged={afterAction} />
+  ) : resource ? (
+    <RequestCard ticketId={ticketId} refreshKey={ticket.version} />
   ) : null
 
   const body = panel ? (

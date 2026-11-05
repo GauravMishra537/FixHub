@@ -31,6 +31,10 @@ import InfraBoardPage from './infra/pages/InfraBoardPage'
 import InfraCatalogPage from './infra/pages/InfraCatalogPage'
 import AdminInfraHub from './infra/pages/AdminInfraHub'
 import CategoryConsolePage from './pages/admin/CategoryConsolePage'
+import AdminResourceHub from './resources/pages/AdminResourceHub'
+import ResourceCatalogPage from './resources/pages/ResourceCatalogPage'
+import ResourceApproversPage from './resources/pages/ResourceApproversPage'
+import ResourceRequestPage from './resources/pages/ResourceRequestPage'
 import RegistrationPage from './pages/admin/RegistrationPage'
 import TicketHistoryPage from './pages/admin/TicketHistoryPage'
 import RoutingRulesPage from './pages/admin/RoutingRulesPage'
@@ -55,7 +59,7 @@ export function App() {
               <Route path="infra" element={<InfraPage />} />
               <Route path="infra/book/:typeId" element={<BookingFormPage />} />
               <Route path="infra/board" element={<InfraBoardPage />} />
-              <Route path="resources" element={<ComingSoonPage title="Resource Requests" />} />
+              <Route path="resources" element={<ResourceRequestPage />} />
               <Route path="topics" element={<ComingSoonPage title="Learning / Topic Requests" />} />
               <Route path="oauth/callback" element={<OAuthCallbackPage />} />
               
@@ -80,7 +84,11 @@ export function App() {
                   <Route path="catalog/:id" element={<KindPage />} />
                 </Route>
                 <Route path="admin/rooms" element={<Navigate to="/admin/infra" replace />} />
-                <Route path="admin/resources" element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
+               <Route path="admin/resources" element={<AdminResourceHub />}>
+                <Route index element={<TicketsPage key="RESOURCE_REQUEST" type="RESOURCE_REQUEST" title="Resource requests" />} />
+                  <Route path="catalog" element={<ResourceCatalogPage />} />
+                    <Route path="approvers" element={<ResourceApproversPage />} />
+                </Route>
                 <Route path="admin/topics" element={<TicketsPage key="TOPIC_REQUEST" type="TOPIC_REQUEST" title="Topic requests" />} />
               </Route>
 

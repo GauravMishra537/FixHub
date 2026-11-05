@@ -27,7 +27,6 @@ const TYPES = [
     icon: Laptop,
     box: 'bg-emerald-50 border-emerald-200 hover:border-emerald-400',
     iconBox: 'bg-emerald-100 text-emerald-600',
-    soon: true,
   },
   {
     to: '/topics',

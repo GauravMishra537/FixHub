@@ -88,6 +88,8 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
   const cancelText =
     ticket.type === 'INFRA_BOOKING'
       ? 'Cancel this booking? Sessions that have not started are released.'
+      : ticket.type === 'RESOURCE_REQUEST'
+      ? 'Cancel this request? Any stock held for you is released.'
       : 'Cancel this ticket?'
 
   return (

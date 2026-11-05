@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import ThemeToggle from '../common/ThemeToggle'
 import NotificationBell from './NotificationBell'
+import useApprovalCount from '../../hooks/useApprovalCount'
 import {
   UserPlus,
   LogIn,
@@ -33,7 +34,7 @@ const USER_LINKS = [
   { to: '/tickets', label: 'All tickets', icon: ListChecks },
 ]
 
-function NavItem({ to, label, icon: Icon, end }) {
+function NavItem({ to, label, icon: Icon, end, badge = 0 }) {
   return (
     <NavLink
       to={to}
@@ -46,6 +47,14 @@ function NavItem({ to, label, icon: Icon, end }) {
     >
       <Icon className="w-4 h-4 mr-1.5" />
       {label}
+      {badge > 0 && (
+        <span
+          title={`${badge} waiting for your approval`}
+          className="ml-1.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-900"
+        >
+          {badge}
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -70,6 +79,8 @@ export function Navbar() {
   }
 
   const links = isAdmin ? ADMIN_LINKS : USER_LINKS
+    // resource requests waiting for me. only a non-admin approves at the department step
+  const waiting = useApprovalCount(isAuthenticated && !isAdmin)
 
   return (
     <header className="sticky top-0 z-40 shadow-md">
@@ -149,7 +160,7 @@ export function Navbar() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
               {links.map((l) => (
-                <NavItem key={l.to} {...l} />
+                <NavItem key={l.to} {...l} badge={!isAdmin && l.to === '/' ? waiting : 0} />
               ))}
             </div>
             <div className="shrink-0">
