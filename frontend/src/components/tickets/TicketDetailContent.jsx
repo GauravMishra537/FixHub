@@ -220,7 +220,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
 
       {/* other tickets: buttons first. infra: title and description first, then the buttons */}
-      {!infra && actionBar}
+            {!special && actionBar}
 
       <div className="-ml-2">
         <EditableText
@@ -246,7 +246,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         />
       </div>
 
-      {infra && <div className="mt-4">{actionBar}</div>}
+            {special && <div className="mt-4">{actionBar}</div>}
 
       {canTriage && !dirty && (
         <p className="mt-3 text-xs text-slate-400">
@@ -337,7 +337,12 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   const sessions = infra ? (
     <SessionsCard rows={sessionRows} isAdmin={isAdmin} open={infraOpen} onChanged={afterAction} />
   ) : resource ? (
-    <RequestCard ticketId={ticketId} refreshKey={ticket.version} />
+        <RequestCard
+      ticketId={ticketId}
+      refreshKey={ticket.version}
+      authorName={ticket.authorName}
+      createdOn={ticket.createdOn}
+    />
   ) : null
 
   const body = panel ? (

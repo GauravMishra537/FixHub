@@ -3,11 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { resourcesApi } from '../../api/resources'
 import SelectMenu from '../../components/common/SelectMenu'
-import DatePickerField from '../../infra/components/DatePickerField'
 import { addDays, startOfDay } from '../../infra/utils/time'
 import { PRIORITY_OPTIONS } from '../../utils/options'
 import { itemKindLabel, leftText, resourceIcon } from '../utils/meta'
-
+import DatePickerField from '../../infra/components/DatePickerField'
 const INPUT =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
@@ -29,8 +28,7 @@ export default function ResourceRequestPage() {
   const [itemId, setItemId] = useState('')
   const [quantity, setQuantity] = useState('1')
   const [reason, setReason] = useState('')
-  const [hasDate, setHasDate] = useState(false)
-  const [neededBy, setNeededBy] = useState(() => addDays(today, 7))
+  const [neededBy, setNeededBy] = useState('') // yyyy-MM-dd, empty = no deadline
   const [priority, setPriority] = useState('MEDIUM')
   const [isPrivate, setIsPrivate] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -49,7 +47,9 @@ export default function ResourceRequestPage() {
 
   const out = item && item.available === 0
   const maxQty = !item ? 1 : item.available == null ? item.maxPerRequest : Math.min(item.maxPerRequest, item.available)
-  const qty = parseInt(quantity, 10)
+    // quantity only for physical items. a digital item (cloud, licence, tokens) is always one request
+  const physical = item?.kind === 'PHYSICAL'
+  const qty = physical ? parseInt(quantity, 10) : 1
 
   const pickGroup = (g) => {
     setGroupId(g.id)
@@ -73,14 +73,14 @@ export default function ResourceRequestPage() {
     if (out) return setError(`${item.name} is out of stock`)
     if (!(qty >= 1) || qty > maxQty) return setError(`Ask for 1 to ${maxQty}`)
     if (!reason.trim()) return setError('Tell us why you need it')
-
+        if (neededBy && neededBy < iso(today)) return setError('The needed-by date is in the past')
     setSaving(true)
     try {
       const created = await resourcesApi.create({
         itemId: item.id,
         quantity: qty,
         reason: reason.trim(),
-        neededBy: hasDate ? iso(neededBy) : null,
+         neededBy: neededBy || null,
         priority,
         visibility: isPrivate ? 'PRIVATE' : 'PUBLIC',
       })
@@ -176,33 +176,58 @@ export default function ResourceRequestPage() {
             )}
 
             {item && (
-              <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <div className="font-medium text-slate-900">{item.name}</div>
-                {item.description && <div className="text-xs text-slate-500">{item.description}</div>}
-                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
-                  <span>{itemKindLabel(item.kind)}</span>
-                  <span className={out ? 'font-semibold text-red-600' : ''}>
-                    {out ? 'Out of stock' : leftText(item.available)}
-                  </span>
-                  <span>{sub.departmentName ? `Approved by ${sub.departmentName}` : 'An admin approves it'}</span>
+              <div className="grid items-start gap-4 md:grid-cols-2">
+                <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                  <div className="font-medium text-slate-900">{item.name}</div>
+                  {item.description && <div className="text-xs text-slate-500">{item.description}</div>}
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
+                    <span>{itemKindLabel(item.kind)}</span>
+                    <span className={out ? 'font-semibold text-red-600' : ''}>
+                      {out ? 'Out of stock' : leftText(item.available)}
+                    </span>
+                    <span>{sub.departmentName ? `Approved by ${sub.departmentName}` : 'An admin approves it'}</span>
+                  </div>
                 </div>
+
+                {!out && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
+                      <SelectMenu value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Needed by (optional)</label>
+                      <DatePickerField
+                        clearable
+                        align="right"
+                        placeholder="No date"
+                        value={neededBy}
+                        onChange={setNeededBy}
+                        minDate={today}
+                        maxDate={addDays(today, 365)}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {item && !out && (
               <>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">How many?</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={maxQty}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <p className="mt-1 text-xs text-slate-400">Up to {maxQty} in one request.</p>
-                </div>
+                {physical && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Quantity required</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxQty}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-slate-400">Maximum {maxQty} per request.</p>
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Why do you need it?</label>
@@ -214,32 +239,6 @@ export default function ResourceRequestPage() {
                     placeholder="e.g. New joiner on my team, project work"
                     className={INPUT}
                   />
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={hasDate}
-                      onChange={(e) => setHasDate(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 accent-blue-600"
-                    />
-                    I need it by a date
-                  </label>
-                  {hasDate && (
-                    <DatePickerField
-                      className="mt-2 w-44"
-                      value={neededBy}
-                      onChange={setNeededBy}
-                      minDate={today}
-                      maxDate={addDays(today, 365)}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-                  <SelectMenu value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
                 </div>
 
                 <label className="flex items-center gap-2 text-sm text-slate-700">
