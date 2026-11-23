@@ -10,9 +10,11 @@ import com.fixhub.ticket.entity.Ticket;
 import com.fixhub.ticket.entity.TicketClaim;
 import com.fixhub.ticket.entity.TicketHistory;
 import com.fixhub.ticket.entity.TicketStatus;
+import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.repository.TicketClaimRepository;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
+import com.fixhub.topic.service.TopicAccess;
 import com.fixhub.ticket.service.TicketActor;
 import com.fixhub.ticket.service.TicketClaimService;
 import com.fixhub.ticket.service.TicketHistoryService;
@@ -47,6 +49,7 @@ public class TicketClaimServiceImpl implements TicketClaimService {
     private final TicketService ticketService;
     private final NotificationService notificationService;
     private final TicketRules rules;
+    private final TopicAccess topicAccess;
 
     public TicketClaimServiceImpl(TicketRepository ticketRepository,
                                   TicketClaimRepository claimRepository,
@@ -55,7 +58,7 @@ public class TicketClaimServiceImpl implements TicketClaimService {
                                   UserRepository userRepository,
                                   TicketService ticketService,
                                   NotificationService notificationService,
-                                  TicketRules rules) {
+                                  TicketRules rules,TopicAccess topicAccess) {
         this.ticketRepository = ticketRepository;
         this.claimRepository = claimRepository;
         this.historyRepository = historyRepository;
@@ -64,6 +67,7 @@ public class TicketClaimServiceImpl implements TicketClaimService {
         this.ticketService = ticketService;
         this.notificationService = notificationService;
         this.rules = rules;
+        this.topicAccess = topicAccess;
     }
 
     // ================= employee =================
@@ -215,6 +219,10 @@ public class TicketClaimServiceImpl implements TicketClaimService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The ticket is already assigned to this person");
         }
         if (!userRepository.existsById(userId)) {
+             String badHelper = topicAccess.assignDeniedReason(ticket, userId);
+        if (badHelper != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, badHelper);
+        }
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
@@ -262,12 +270,13 @@ public class TicketClaimServiceImpl implements TicketClaimService {
         claimRepository.findByTicketIdAndUserIdAndStatusIn(ticketId, oldAssignee, List.of(ClaimStatus.APPROVED))
                 .ifPresent(c -> closeClaim(ticket, c, ClaimStatus.WITHDRAWN, actor.id(), null, null));
 
+        TicketStatus back = ticket.getType() == TicketType.TOPIC_REQUEST ? TicketStatus.OPEN : TicketStatus.NEW;
         String before = ticket.getStatus().name();
         ticket.setAssigneeId(null);
-        ticket.setStatus(TicketStatus.NEW);
+        ticket.setStatus(back);
         ticketRepository.saveAndFlush(ticket);
 
-        historyService.recordFieldChange(ticketId, actor.id(), "status", before, TicketStatus.NEW.name());
+        historyService.recordFieldChange(ticketId, actor.id(), "status", before, back.name());
         log(ticketId, actor.id(), HistoryAction.UNASSIGNED, "assignee", userName(oldAssignee), null, null);
         tell(oldAssignee, actor.id(), NotificationType.TICKET_UNASSIGNED, ticket,
                 label(ticket) + " was taken back by the admin");

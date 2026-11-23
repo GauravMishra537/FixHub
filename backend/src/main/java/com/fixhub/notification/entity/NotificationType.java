@@ -34,5 +34,9 @@ public enum NotificationType {
     RESOURCE_DEPT_APPROVED,
     RESOURCE_APPROVED,
     RESOURCE_REJECTED,
-    RESOURCE_CANCELLED
+    RESOURCE_CANCELLED,
+    // topic request: people with a matching skill are asked to help (to them only),
+    // and admin hears when a helper gave the ticket back
+    TOPIC_HELP_NEEDED,
+    TOPIC_HELPER_BUSY
 }

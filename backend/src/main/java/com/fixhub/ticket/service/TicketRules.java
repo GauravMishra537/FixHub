@@ -4,6 +4,7 @@ import com.fixhub.ticket.entity.Ticket;
 import com.fixhub.ticket.entity.TicketStatus;
 import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.entity.TicketVisibility;
+import com.fixhub.topic.service.TopicAccess;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
@@ -17,6 +18,12 @@ import java.util.Set;
  */
 @Component
 public class TicketRules {
+
+    private final TopicAccess topicAccess;
+
+    public TicketRules(TopicAccess topicAccess) {
+        this.topicAccess = topicAccess;
+    }
 
     // types users may create right now
     private static final Set<TicketType> CREATABLE_TYPES = Set.of(TicketType.ISSUE);
@@ -61,7 +68,7 @@ public class TicketRules {
         Set.of(TicketStatus.NEW, TicketStatus.OPEN, TicketStatus.ASSIGNED));
         EDITABLE.put(TicketType.INFRA_BOOKING, Set.of());
         EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of(TicketStatus.PENDING_APPROVAL));
-        EDITABLE.put(TicketType.TOPIC_REQUEST, Set.of(TicketStatus.OPEN));
+        EDITABLE.put(TicketType.TOPIC_REQUEST, Set.of(TicketStatus.OPEN, TicketStatus.ASSIGNED));
         EDITABLE.put(TicketType.RESOURCE_REQUEST, Set.of());
     }
 
@@ -81,13 +88,18 @@ public class TicketRules {
 
     // ---------- view ----------
 
-    /** Public: every logged in user. Private: requester, assignee, admin. */
+    /** Public: every logged in user. Private: requester, assignee, admin. A skilled user sees a private topic while it waits. */
     public boolean canView(Ticket ticket, Long viewerId, boolean admin) {
         if (ticket.getVisibility() == TicketVisibility.PUBLIC || admin) {
             return true;
         }
-        return viewerId != null
-                && (viewerId.equals(ticket.getAuthorId()) || viewerId.equals(ticket.getAssigneeId()));
+        if (viewerId == null) {
+            return false;
+        }
+        if (viewerId.equals(ticket.getAuthorId()) || viewerId.equals(ticket.getAssigneeId())) {
+            return true;
+        }
+        return topicAccess.seesInQueue(ticket, viewerId);
     }
 
     // ---------- edit ----------
@@ -123,6 +135,15 @@ public class TicketRules {
     public String claimDeniedReason(Ticket ticket, Long userId, Long userDepartmentId, boolean admin) {
         if (admin) {
             return "Admins assign tickets, they do not claim them";
+        }
+        if (ticket.getType() == TicketType.TOPIC_REQUEST) {
+            if (!queueStatuses().contains(ticket.getStatus()) || ticket.getAssigneeId() != null) {
+                return "This question is no longer waiting for a helper";
+            }
+            if (userId.equals(ticket.getAuthorId())) {
+                return "You cannot help with your own question";
+            }
+            return topicAccess.helperDeniedReason(ticket, userId);
         }
         if (ticket.getType() != TicketType.ISSUE) {
             return "Only issue tickets can be claimed";

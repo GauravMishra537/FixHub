@@ -297,7 +297,10 @@ public class TicketServiceImpl implements TicketService {
         String title = fullEdit ? request.getTitle().trim() : ticket.getTitle();
         String description = fullEdit ? clean(request.getDescription()) : ticket.getDescription();
         TicketVisibility visibility = fullEdit ? request.getVisibility() : ticket.getVisibility();
-        Long newCategoryId = resolveCategoryId(ticket.getType(), request.getCategoryName());
+        // types without a typed category (topic, resource) keep the chip they have
+        Long newCategoryId = rules.needsCategory(ticket.getType())
+                ? resolveCategoryId(ticket.getType(), request.getCategoryName())
+                : ticket.getCategoryId();
 
         // one history row per field that really changed (equal values write nothing)
         Long actorId = actor.id();

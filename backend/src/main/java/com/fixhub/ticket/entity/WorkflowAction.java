@@ -17,7 +17,9 @@ public enum WorkflowAction {
     DEPT_APPROVE("Approve", false),
     DEPT_REJECT("Reject", true),
     // resource request: the author closes it once the item is received
-    CLOSE("Close", false);
+    CLOSE("Close", false),
+    // topic request: the helper cannot take it now, so it goes back to the queue
+    BUSY("I'm busy", true);
 
     private final String label;
     private final boolean noteRequired;

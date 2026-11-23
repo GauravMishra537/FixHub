@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * Every allowed status move in one place, one table per ticket type:
  * from which status, to which status, and who may do it.
- * Issue and infra booking for now. Other types get their own table in their own commits.
+ * Issue, infra booking, resource request and topic request.
  */
 @Component
 public class TicketWorkflow {
@@ -25,7 +25,13 @@ public class TicketWorkflow {
     private record Rule(Set<TicketStatus> from, TicketStatus to, By by) {
     }
 
+    // button text and "reason needed" that differ from the default for one ticket type
+    private record Look(String label, boolean noteRequired) {
+    }
+
     private static final Map<TicketType, Map<WorkflowAction, Rule>> RULES = new EnumMap<>(TicketType.class);
+
+    private static final Map<TicketType, Map<WorkflowAction, Look>> LOOKS = new EnumMap<>(TicketType.class);
 
     static {
         // ---------- issue ----------
@@ -52,7 +58,7 @@ public class TicketWorkflow {
         RULES.put(TicketType.ISSUE, issue);
 
         // ---------- infra booking ----------
-       // the admin approves or rejects. the author can cancel. closing after the last session is done by a job
+        // the admin approves or rejects. the author can cancel. closing after the last session is done by a job
         Map<WorkflowAction, Rule> infra = new EnumMap<>(WorkflowAction.class);
         infra.put(WorkflowAction.APPROVE,
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL), TicketStatus.APPROVED, By.ADMIN));
@@ -62,7 +68,6 @@ public class TicketWorkflow {
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.APPROVED, TicketStatus.PARTIALLY_APPROVED),
                         TicketStatus.CANCELLED, By.REQUESTER));
         RULES.put(TicketType.INFRA_BOOKING, infra);
-
 
         // ---------- resource request ----------
         // department person (the assignee) decides first, then an admin. the author closes and may cancel
@@ -81,6 +86,35 @@ public class TicketWorkflow {
                 new Rule(Set.of(TicketStatus.PENDING_APPROVAL, TicketStatus.DEPT_APPROVED, TicketStatus.APPROVED),
                         TicketStatus.CANCELLED, By.REQUESTER));
         RULES.put(TicketType.RESOURCE_REQUEST, resource);
+
+        // ---------- topic request ----------
+        // helper (the assignee) starts and shares an explanation. the author says solved or not solved.
+        // "I'm busy" sends the ticket back to the queue (TopicLifecycleHook clears the helper)
+        Map<WorkflowAction, Rule> topic = new EnumMap<>(WorkflowAction.class);
+        topic.put(WorkflowAction.START,
+                new Rule(Set.of(TicketStatus.ASSIGNED, TicketStatus.REOPENED), TicketStatus.IN_PROGRESS, By.ASSIGNEE));
+        topic.put(WorkflowAction.RESOLVE,
+                new Rule(Set.of(TicketStatus.IN_PROGRESS), TicketStatus.RESOLVED, By.ASSIGNEE));
+        topic.put(WorkflowAction.BUSY,
+                new Rule(Set.of(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.REOPENED),
+                        TicketStatus.OPEN, By.ASSIGNEE));
+        topic.put(WorkflowAction.CONFIRM,
+                new Rule(Set.of(TicketStatus.RESOLVED), TicketStatus.CLOSED, By.REQUESTER_OR_ADMIN));
+        topic.put(WorkflowAction.REOPEN,
+                new Rule(Set.of(TicketStatus.RESOLVED), TicketStatus.REOPENED, By.REQUESTER));
+        topic.put(WorkflowAction.CANCEL,
+                new Rule(Set.of(TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.REOPENED),
+                        TicketStatus.CANCELLED, By.REQUESTER));
+        RULES.put(TicketType.TOPIC_REQUEST, topic);
+
+        // topic buttons: own names, and which ones need a reason
+        Map<WorkflowAction, Look> topicLooks = new EnumMap<>(WorkflowAction.class);
+        topicLooks.put(WorkflowAction.START, new Look("Start", false));
+        topicLooks.put(WorkflowAction.RESOLVE, new Look("Share explanation", false));
+        topicLooks.put(WorkflowAction.BUSY, new Look("I'm busy", true));
+        topicLooks.put(WorkflowAction.CONFIRM, new Look("Yes, solved", false));
+        topicLooks.put(WorkflowAction.REOPEN, new Look("Not solved yet", true));
+        LOOKS.put(TicketType.TOPIC_REQUEST, topicLooks);
     }
 
     /** Does this ticket type have a workflow yet? */
@@ -91,6 +125,18 @@ public class TicketWorkflow {
     /** The status the ticket gets after this action. Call only after deniedReason said null. */
     public TicketStatus targetStatus(TicketType type, WorkflowAction action) {
         return RULES.get(type).get(action).to();
+    }
+
+    /** Button text for this type. Falls back to the action's own label. */
+    public String label(TicketType type, WorkflowAction action) {
+        Look look = LOOKS.getOrDefault(type, Map.of()).get(action);
+        return look == null ? action.label() : look.label();
+    }
+
+    /** Is a reason needed? Falls back to the action's own flag. */
+    public boolean noteRequired(TicketType type, WorkflowAction action) {
+        Look look = LOOKS.getOrDefault(type, Map.of()).get(action);
+        return look == null ? action.noteRequired() : look.noteRequired();
     }
 
     /** null = allowed. Otherwise a message that is safe to show the user. */

@@ -8,12 +8,12 @@ import com.fixhub.ticket.entity.HistoryAction;
 import com.fixhub.ticket.entity.Ticket;
 import com.fixhub.ticket.entity.TicketHistory;
 import com.fixhub.ticket.entity.TicketStatus;
+import com.fixhub.ticket.entity.TicketType;
 import com.fixhub.ticket.entity.WorkflowAction;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.repository.TicketRepository;
-import com.fixhub.ticket.entity.TicketType;
-import com.fixhub.ticket.service.TicketLifecycleHook;
 import com.fixhub.ticket.service.TicketActor;
+import com.fixhub.ticket.service.TicketLifecycleHook;
 import com.fixhub.ticket.service.TicketRules;
 import com.fixhub.ticket.service.TicketService;
 import com.fixhub.ticket.service.TicketWorkflow;
@@ -51,7 +51,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
                                      NotificationService notificationService,
                                      TicketWorkflow workflow,
                                      TicketRules rules,
-                                    List<TicketLifecycleHook> hooks) {
+                                     List<TicketLifecycleHook> hooks) {
         this.ticketRepository = ticketRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
@@ -59,7 +59,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         this.notificationService = notificationService;
         this.workflow = workflow;
         this.rules = rules;
-        this.hooks=hooks;
+        this.hooks = hooks;
     }
 
     @Override
@@ -81,11 +81,18 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
 
         String denied = workflow.deniedReason(ticket, action, actor.id(), actor.admin());
         if (denied != null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, denied);
+            // someone involved with the ticket gets 409 (wrong moment). a stranger gets 403
+            boolean involved = actor.id().equals(ticket.getAuthorId())
+                    || actor.id().equals(ticket.getAssigneeId())
+                    || (actor.admin() && (action == WorkflowAction.CONFIRM
+                            || action == WorkflowAction.APPROVE
+                            || action == WorkflowAction.REJECT
+                            || action == WorkflowAction.CANCEL));
+            throw new ResponseStatusException(involved ? HttpStatus.CONFLICT : HttpStatus.FORBIDDEN, denied);
         }
 
         String note = request.getNote() == null ? "" : request.getNote().trim();
-        if (action.noteRequired() && note.isEmpty()) {
+        if (workflow.noteRequired(ticket.getType(), action) && note.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reason is required for this action");
         }
         if (note.length() > MAX_NOTE) {
@@ -96,7 +103,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
         TicketStatus after = workflow.targetStatus(ticket.getType(), action);
         Instant now = Instant.now();
 
-        // a type with its own rows (infra sessions) updates them here, in the same transaction,
+        // a type with its own rows (infra sessions, topic helper) updates them here, in the same transaction,
         // and may decide another final status, for example partially approved
         for (TicketLifecycleHook hook : hooks) {
             if (hook.type() == ticket.getType()) {
@@ -116,7 +123,7 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
                 ticket.setResolvedOn(null);
             }
             default -> {
-                // start, hold, resume and cancel only change the status
+                // start, hold, resume, busy and cancel only change the status
             }
         }
         // flush now so the new version number is in the answer
@@ -166,7 +173,9 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
             case RESUME -> tell(ticket.getAuthorId(), actorId, NotificationType.TICKET_STATUS, ticket,
                     who + " resumed work on " + label);
             case RESOLVE -> tell(ticket.getAuthorId(), actorId, NotificationType.TICKET_RESOLVED, ticket,
-                    label + " was resolved. Please confirm or reopen it" + reason);
+                    ticket.getType() == TicketType.TOPIC_REQUEST
+                            ? who + " shared an explanation on " + label + ". Did it solve your problem?" + reason
+                            : label + " was resolved. Please confirm or reopen it" + reason);
             case CONFIRM -> {
                 // the requester and the assignee both hear who closed it. the person who did it hears nothing
                 tell(ticket.getAuthorId(), actorId, NotificationType.TICKET_CLOSED, ticket,
@@ -179,7 +188,9 @@ public class TicketWorkflowServiceImpl implements TicketWorkflowService {
             case CANCEL -> tell(ticket.getAssigneeId(), actorId, NotificationType.TICKET_CANCELLED, ticket,
                     who + " cancelled " + label);
 
-            default ->{}
+            // BUSY is told by TopicLifecycleHook
+            default -> {
+            }
         }
     }
 
