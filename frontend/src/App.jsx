@@ -38,6 +38,7 @@ import ResourceRequestPage from './resources/pages/ResourceRequestPage'
 import RegistrationPage from './pages/admin/RegistrationPage'
 import TicketHistoryPage from './pages/admin/TicketHistoryPage'
 import RoutingRulesPage from './pages/admin/RoutingRulesPage'
+import TopicRequestPage from './topics/pages/TopicRequestPage'
 export function App() {
   return (
     <ErrorBoundary>
@@ -60,7 +61,7 @@ export function App() {
               <Route path="infra/book/:typeId" element={<BookingFormPage />} />
               <Route path="infra/board" element={<InfraBoardPage />} />
               <Route path="resources" element={<ResourceRequestPage />} />
-              <Route path="topics" element={<ComingSoonPage title="Learning / Topic Requests" />} />
+              <Route path="/topics/request" element={<TopicRequestPage />} />
               <Route path="oauth/callback" element={<OAuthCallbackPage />} />
               
               {/* Protected Administrator Route */}

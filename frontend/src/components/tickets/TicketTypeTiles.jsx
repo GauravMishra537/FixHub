@@ -29,13 +29,12 @@ const TYPES = [
     iconBox: 'bg-emerald-100 text-emerald-600',
   },
   {
-    to: '/topics',
+    to: '/topics/request',
     title: 'Topic Request',
-    text: 'Ask a colleague to teach you',
+    text: 'Get help from a colleague who knows it',
     icon: GraduationCap,
     box: 'bg-amber-50 border-amber-200 hover:border-amber-400',
     iconBox: 'bg-amber-100 text-amber-600',
-    soon: true,
   },
 ]
 

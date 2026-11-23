@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Inbox, Loader2 } from 'lucide-react'
 import { ticketCoreApi } from '../../api/ticketCore'
 import { resourcesApi } from '../../api/resources'
+import { topicsApi } from '../../api/topics'
 import { useAuth } from '../../context/AuthContext'
 import TicketCard from './TicketCard'
 import TicketDrawer from '../tickets/TicketDrawer'
 import ApprovalCard from '../../resources/components/ApprovalCard'
+import TopicQueueCard from '../../topics/components/TopicQueueCard'
 
 const SIZE = 10
 
@@ -13,12 +15,14 @@ const SUB = 'mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400'
 
 /**
  * My queue. First the resource requests waiting for my approval (Approve or Reject on the card),
- * then the tickets routed to my department that nobody has taken yet. Oldest first.
+ * then the questions I can help with (I can help on the card), then the tickets routed to my department
+ * that nobody has taken yet. Oldest first.
  */
 export default function DepartmentQueue() {
   const { isAdmin } = useAuth()
   const [items, setItems] = useState([])
   const [approvals, setApprovals] = useState([])
+  const [topics, setTopics] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -48,30 +52,51 @@ export default function DepartmentQueue() {
     }
   }, [])
 
-  // after a decision, a claim, or any change in a panel: both lists and the navbar badge
+  const loadTopics = useCallback(async () => {
+    try {
+      setTopics((await topicsApi.queue()) || [])
+    } catch {
+      setTopics([])
+    }
+  }, [])
+
+  // after a decision, a claim, or any change in a panel: all lists and the navbar badge
   const refresh = useCallback(async () => {
-    await Promise.all([load(0, true), loadApprovals()])
+    await Promise.all([load(0, true), loadApprovals(), loadTopics()])
     window.dispatchEvent(new Event('tickets:changed'))
-  }, [load, loadApprovals])
+  }, [load, loadApprovals, loadTopics])
 
   useEffect(() => {
     if (isAdmin) return undefined
     load(0, true)
     loadApprovals()
+    loadTopics()
     // a ticket changed somewhere else on the page (the right panel, the stats row)
     const again = () => {
       load(0, true)
       loadApprovals()
+      loadTopics()
     }
     window.addEventListener('tickets:changed', again)
     return () => window.removeEventListener('tickets:changed', again)
-  }, [isAdmin, load, loadApprovals])
+  }, [isAdmin, load, loadApprovals, loadTopics])
+
+  // "I can help": the first person to click gets it. an error goes back to the card
+  const takeTopic = async (ticketId) => {
+    try {
+      await ticketCoreApi.claim(ticketId)
+    } catch (e) {
+      await loadTopics() // somebody else was first: the card leaves the list
+      throw e
+    }
+    await refresh()
+  }
 
   // admin has the admin board
   if (isAdmin) return null
 
-  const count = total + approvals.length
-  const nothing = !loading && !error && items.length === 0 && approvals.length === 0
+  const count = total + approvals.length + topics.length
+  const nothing = !loading && !error && items.length === 0 && approvals.length === 0 && topics.length === 0
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -92,6 +117,17 @@ export default function DepartmentQueue() {
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {approvals.map((r) => (
                 <ApprovalCard key={r.ticketId} row={r} onOpen={setOpenId} onDone={refresh} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {topics.length > 0 && (
+          <div>
+            <div className={SUB}>Questions you can help with ({topics.length})</div>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {topics.map((r) => (
+                <TopicQueueCard key={r.ticketId} row={r} onOpen={setOpenId} onClaim={takeTopic} />
               ))}
             </div>
           </div>

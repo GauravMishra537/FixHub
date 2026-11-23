@@ -16,6 +16,7 @@ const KIND = {
   CONFIRM: 'success',
   APPROVE: 'success',
   HOLD: 'outline',
+  BUSY: 'outline',
   REOPEN: 'danger',
   REJECT: 'danger',
   CANCEL: 'danger',
@@ -33,15 +34,24 @@ const ASK = {
   DEPT_REJECT: 'Why is it rejected?',
 }
 
+// the same actions, asked another way on a topic request
+const ASK_TOPIC = {
+  RESOLVE: 'Explain the topic. Add links and files above.',
+  REOPEN: 'What more do you need? What is still stuck?',
+  BUSY: 'Why are you busy? An admin will find another helper.',
+}
+
 /**
  * Buttons the server says this person may press now (ticket.actions).
  * A button that needs a reason opens a small box first.
+ * On a topic request "Share explanation" also opens the box, but the note is optional.
  * Cancel asks "are you sure" inside the page, not in a browser popup.
  * onDone(updatedTicket): called after a successful move. onDone(null) after Reload.
  */
 export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
   const actions = ticket.actions || []
-  const [asking, setAsking] = useState(null) // { action, label, note }
+  const topic = ticket.type === 'TOPIC_REQUEST'
+  const [asking, setAsking] = useState(null) // { action, label, note, required }
   const [confirming, setConfirming] = useState(null) // the action waiting for "yes"
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -50,12 +60,14 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
 
   const waitingForConfirm = actions.some((a) => a.action === 'CONFIRM')
 
-    // booking with several sessions: the buttons decide all of them
+  // booking with several sessions: the buttons decide all of them
   const labelOf = (a) => {
     if (ticket.type !== 'INFRA_BOOKING' || (a.action !== 'APPROVE' && a.action !== 'REJECT')) return a.label
     const word = a.action === 'APPROVE' ? 'Approve' : 'Reject'
     return sessionCount > 1 ? `${word} all` : word
   }
+
+  const askText = (action) => (topic && ASK_TOPIC[action]) || ASK[action] || 'Reason'
 
   const run = async (action, note) => {
     setBusy(true)
@@ -74,8 +86,9 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
   }
 
   const press = (a) => {
-    if (a.noteRequired) {
-            setAsking({ action: a.action, label: labelOf(a), note: '' })
+    // a topic explanation opens the box too, with an optional note
+    if (a.noteRequired || (topic && a.action === 'RESOLVE')) {
+      setAsking({ action: a.action, label: labelOf(a), note: '', required: a.noteRequired })
       return
     }
     if (a.action === 'CANCEL') {
@@ -90,13 +103,19 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
       ? 'Cancel this booking? Sessions that have not started are released.'
       : ticket.type === 'RESOURCE_REQUEST'
       ? 'Cancel this request? Any stock held for you is released.'
+      : topic
+      ? 'Cancel this question?'
       : 'Cancel this ticket?'
+
+  const heading = waitingForConfirm
+    ? topic
+      ? 'Explanation shared. Did it solve your problem?'
+      : 'Marked resolved. Is it fixed?'
+    : 'Next step'
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <div className="text-sm font-semibold text-slate-900">
-        {waitingForConfirm ? 'Marked resolved. Is it fixed?' : 'Next step'}
-      </div>
+      <div className="text-sm font-semibold text-slate-900">{heading}</div>
 
       {error && (
         <div className="mt-2 flex items-center justify-between gap-3 text-sm text-red-600">
@@ -120,7 +139,7 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
               }`}
             >
               {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-                            {labelOf(a)}
+              {labelOf(a)}
             </button>
           ))}
         </div>
@@ -154,7 +173,8 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
       {asking && (
         <div className="mt-3 space-y-2">
           <label className="block text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {ASK[asking.action] || 'Reason'}
+            {askText(asking.action)}
+            {!asking.required && <span className="ml-1 normal-case tracking-normal">(optional)</span>}
           </label>
           <textarea
             autoFocus
@@ -167,7 +187,7 @@ export default function TicketActionBar({ ticket, onDone, sessionCount = 0 }) {
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy || !asking.note.trim()}
+              disabled={busy || (asking.required && !asking.note.trim())}
               onClick={() => run(asking.action, asking.note.trim())}
               className={`inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
                 STYLE[KIND[asking.action] || 'outline']

@@ -2,16 +2,22 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Check, Loader2, UserCheck, X } from 'lucide-react'
 import { ticketCoreApi } from '../../api/ticketCore'
 import { getUsers } from '../../api/admin'
+import { topicsApi } from '../../api/topics'
 import SelectMenu from '../common/SelectMenu'
 import { formatDateTime } from '../../utils/format'
 
 const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
 
-/** Admin box: waiting claims (approve or reject), assign to a person, take the ticket back. */
+/**
+ * Admin box: waiting claims (approve or reject), assign to a person, take the ticket back.
+ * A topic request lists the people who hold the skill. Nobody holds it: everyone, with a warning.
+ */
 export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
   const ticketId = ticket.id
+  const topic = ticket.type === 'TOPIC_REQUEST'
   const [claims, setClaims] = useState([])
   const [users, setUsers] = useState([])
+  const [helpers, setHelpers] = useState(null) // topic: { nobodyHasSkill, users: [{ id, fullName, declined }] }
   const [pick, setPick] = useState('')
   const [rejecting, setRejecting] = useState(null) // { id, reason }
   const [busy, setBusy] = useState(false)
@@ -19,13 +25,17 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
 
   const load = useCallback(async () => {
     try {
-      const [c, u] = await Promise.all([ticketCoreApi.claims(ticketId), getUsers()])
+      const [c, u] = await Promise.all([
+        ticketCoreApi.claims(ticketId),
+        topic ? topicsApi.helpers(ticketId) : getUsers(),
+      ])
       setClaims(c || [])
-      setUsers(u || [])
+      if (topic) setHelpers(u)
+      else setUsers(u || [])
     } catch (e) {
       setError(e.message || 'Could not load claims')
     }
-  }, [ticketId])
+  }, [ticketId, topic])
 
   useEffect(() => {
     load()
@@ -49,22 +59,35 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
 
   const waiting = claims.filter((c) => c.status === 'PENDING')
 
-  // only people of the ticket's department. no department on ticket, or nobody in it: show everyone
+  // issue: only people of the ticket's department. no department on ticket, or nobody in it: show everyone
   const people = users.filter((u) => u.role !== 'ADMIN')
-  const department = ticket.departmentName
+  const department = topic ? null : ticket.departmentName
   const inDepartment = department ? people.filter((u) => same(u.departmentName, department)) : people
   const wholeList = Boolean(department) && inDepartment.length === 0
   const shown = wholeList ? people : inDepartment
 
-  const options = shown.map((u) => ({
-    value: u.id,
-    label: `${u.fullName} (${u.email})${u.departmentName ? ` - ${u.departmentName}` : ''}`,
-  }))
+  const options = topic
+    ? (helpers?.users || []).map((u) => ({
+        value: u.id,
+        label: `${u.fullName}${u.declined ? ' (was busy)' : ''}`,
+      }))
+    : shown.map((u) => ({
+        value: u.id,
+        label: `${u.fullName} (${u.email})${u.departmentName ? ` - ${u.departmentName}` : ''}`,
+      }))
+
+  const heading = topic
+    ? ticket.assigneeName
+      ? `Helper: ${ticket.assigneeName}. Give it to someone else`
+      : 'Assign helper'
+    : ticket.assigneeName
+    ? `Assigned to ${ticket.assigneeName}. Give it to someone else`
+    : 'Assign to a person'
 
   return (
     <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center text-sm font-semibold text-slate-900">
-        <UserCheck className="mr-2 h-4 w-4 text-slate-500" /> Assignment
+        <UserCheck className="mr-2 h-4 w-4 text-slate-500" /> {topic ? 'Helper' : 'Assignment'}
       </div>
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -138,14 +161,15 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
 
       <div className="mt-3">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          {ticket.assigneeName ? `Assigned to ${ticket.assigneeName}. Give it to someone else` : 'Assign to a person'}
+          {heading}
           {department && !wholeList ? ` (${department})` : ''}
+          {topic && helpers && !helpers.nobodyHasSkill ? ' (people with this skill)' : ''}
         </div>
         <div className="flex gap-2">
           <SelectMenu
             className="min-w-0 flex-1"
             value={pick}
-            placeholder="Select a person"
+            placeholder={topic ? 'Select a helper' : 'Select a person'}
             options={options}
             onChange={setPick}
           />
@@ -160,8 +184,9 @@ export default function TicketAssignPanel({ ticket, refreshKey, onDone }) {
           </button>
         </div>
 
-        {wholeList && (
-          <p className="mt-1.5 text-xs text-amber-600">No one in {department}. Showing everyone.</p>
+        {wholeList && <p className="mt-1.5 text-xs text-amber-600">No one in {department}. Showing everyone.</p>}
+        {topic && helpers?.nobodyHasSkill && (
+          <p className="mt-1.5 text-xs text-amber-600">No one has this skill. Showing everyone.</p>
         )}
 
         {ticket.assigneeName && ticket.status === 'ASSIGNED' && (

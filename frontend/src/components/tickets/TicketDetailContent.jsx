@@ -15,6 +15,7 @@ import TicketComments from './TicketComments'
 import TicketAttachments from './TicketAttachments'
 import SessionsCard from '../../infra/components/SessionsCard'
 import RequestCard from '../../infra/components/RequestCard'
+import TopicCard from '../../topics/components/TopicCard'
 import TicketStatusBadge, { PriorityBadge } from './TicketStatusBadge'
 import TicketTimeline from './TicketTimeline'
 import { formatDateTime } from '../../utils/format'
@@ -25,6 +26,9 @@ const OPEN_INFRA = ['PENDING_APPROVAL', 'APPROVED', 'PARTIALLY_APPROVED']
 
 // a resource request is still in play in these states. the author can cancel, admin can still reject
 const OPEN_RESOURCE = ['PENDING_APPROVAL', 'DEPT_APPROVED', 'APPROVED']
+
+// nothing is added to these tickets any more
+const FINISHED = ['CLOSED', 'CANCELLED', 'REJECTED', 'RETURNED']
 
 function Field({ label, children }) {
   return (
@@ -79,7 +83,7 @@ const normalize = (d) => ({
  * onChanged(ticket): called after a successful save, claim or assignment so a board behind the panel can refresh.
  */
 export default function TicketDetailContent({ ticketId, layout = 'page', onChanged }) {
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
   const [ticket, setTicket] = useState(null)
   const [draft, setDraft] = useState(null)
   const [history, setHistory] = useState([])
@@ -123,9 +127,15 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
 
   const infra = ticket.type === 'INFRA_BOOKING'
   const resource = ticket.type === 'RESOURCE_REQUEST'
+  const topic = ticket.type === 'TOPIC_REQUEST'
   const special = infra || resource // not assigned, no attachments, priority and visibility saved at once
   const canEdit = ticket.canEdit // title, description, visibility: only the person who raised it
   const canTriage = !special && Boolean(ticket.canEdit || ticket.canTriage) // category and priority: also the admin
+  // a topic category is its first topic. it is never typed
+  const canEditCategory = canTriage && !topic
+  // learning links: the helper or an admin, while the ticket is not finished
+  const finished = FINISHED.includes(ticket.status)
+  const canAddLinks = topic && !finished && (isAdmin || (user?.id != null && user.id === ticket.assigneeId))
   // infra and resource: admin while the ticket is open. The author too: the server only gives Cancel to the author while it is open
   const infraOpen = OPEN_INFRA.includes(ticket.status)
   const specialOpen = infra ? infraOpen : resource && OPEN_RESOURCE.includes(ticket.status)
@@ -135,7 +145,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
   const dirty = JSON.stringify(normalize(draft)) !== JSON.stringify(normalize(original))
   const problem = !draft.title.trim()
     ? 'Title is required'
-    : draft.categoryName.trim().length < 2
+    : !topic && draft.categoryName.trim().length < 2
     ? 'Category is required (at least 2 characters)'
     : ''
   const panel = layout === 'panel'
@@ -212,7 +222,9 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
       {notice && !dirty && <Alert type="success">{notice}</Alert>}
 
-      {!isAdmin && !special && <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} />}
+      {!isAdmin && !special && (
+        <TicketClaimBox ticketId={ticketId} refreshKey={ticket.version} onDone={afterAction} topic={topic} />
+      )}
 
       {/* Bookings are not assigned */}
       {isAdmin && !special && ticket.canTriage && (
@@ -220,7 +232,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
       )}
 
       {/* other tickets: buttons first. infra: title and description first, then the buttons */}
-            {!special && actionBar}
+      {!special && actionBar}
 
       <div className="-ml-2">
         <EditableText
@@ -246,11 +258,11 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
         />
       </div>
 
-            {special && <div className="mt-4">{actionBar}</div>}
+      {special && <div className="mt-4">{actionBar}</div>}
 
       {canTriage && !dirty && (
         <p className="mt-3 text-xs text-slate-400">
-          {canEdit ? 'Click any field to edit it.' : 'As admin you can change the category and the priority.'}
+          {canEdit ? 'Click any field to edit it.' : 'As admin you can change the priority.'}
         </p>
       )}
     </div>
@@ -271,7 +283,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           <div className="-ml-2">
             <EditableSelect
               value={priorityValue}
-             onChange={special ? saveSetting('priority') : set('priority')}
+              onChange={special ? saveSetting('priority') : set('priority')}
               options={PRIORITY_OPTIONS}
               editable={special ? canSettings : canTriage}
               renderValue={() => <PriorityBadge priority={priorityValue} />}
@@ -285,7 +297,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
               value={visibilityValue}
               onChange={special ? saveSetting('visibility') : set('visibility')}
               options={VISIBILITY_OPTIONS}
-              editable={special? canSettings : canEdit}
+              editable={special ? canSettings : canEdit}
               renderValue={(label) => (
                 <span className="inline-flex items-center text-sm text-slate-800">
                   {visibilityValue === 'PRIVATE' ? (
@@ -300,20 +312,24 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           </div>
         </Field>
 
-        <Field label="Category">
+        <Field label={topic ? 'Main topic' : 'Category'}>
           <div className="-ml-2">
             <CategoryField
               value={draft.categoryName}
               onChange={set('categoryName')}
               type={ticket.type}
-              editable={canTriage}
+              editable={canEditCategory}
             />
           </div>
         </Field>
 
         <Field label="Author">{ticket.authorName}</Field>
-        {!infra && <Field label="Assigned to">{ticket.assigneeName || 'Not assigned yet'}</Field>}
-        {!infra && <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>}
+        {!infra && (
+          <Field label={topic ? 'Helper' : 'Assigned to'}>
+            {ticket.assigneeName || (topic ? 'Waiting for a helper' : 'Not assigned yet')}
+          </Field>
+        )}
+        {!infra && !topic && <Field label="Department">{ticket.departmentName || 'Not routed yet'}</Field>}
         <Field label="Created">{formatDateTime(ticket.createdOn)}</Field>
         <Field label="Last updated">{formatDateTime(ticket.updatedOn)}</Field>
         {ticket.resolvedOn && <Field label="Resolved">{formatDateTime(ticket.resolvedOn)}</Field>}
@@ -333,16 +349,19 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
 
   const attachments = special ? null : <TicketAttachments ticketId={ticketId} status={ticket.status} />
 
-  // infra shows its sessions, a resource request shows its Request card. Same place on the page
+  // infra shows its sessions, a resource request shows its Request card, a topic shows its topics and links.
+  // Same place on the page
   const sessions = infra ? (
     <SessionsCard rows={sessionRows} isAdmin={isAdmin} open={infraOpen} onChanged={afterAction} />
   ) : resource ? (
-        <RequestCard
+    <RequestCard
       ticketId={ticketId}
       refreshKey={ticket.version}
       authorName={ticket.authorName}
       createdOn={ticket.createdOn}
     />
+  ) : topic ? (
+    <TopicCard ticketId={ticketId} canAdd={canAddLinks} locked={finished} refreshKey={ticket.version} />
   ) : null
 
   const body = panel ? (

@@ -49,7 +49,7 @@ function NavItem({ to, label, icon: Icon, end, badge = 0 }) {
       {label}
       {badge > 0 && (
         <span
-          title={`${badge} waiting for your approval`}
+          title={`${badge} waiting for you in My queue`}
           className="ml-1.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-slate-900"
         >
           {badge}
