@@ -404,7 +404,8 @@ public class TicketServiceImpl implements TicketService {
         TicketResponseDto dto = mapper.toResponse(ticket, names, rules.canEdit(ticket, actor.id()));
         dto.setCanTriage(rules.canTriage(ticket, actor.admin()));
         dto.setActions(workflow.allowedActions(ticket, actor.id(), actor.admin()).stream()
-                .map(a -> new TicketActionDto(a.name(), a.label(), a.noteRequired()))
+                .map(a -> new TicketActionDto(a.name(), workflow.label(ticket.getType(), a),
+                        workflow.noteRequired(ticket.getType(), a)))
                 .toList());
         return dto;
     }
