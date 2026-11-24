@@ -1,168 +1,139 @@
 # FixHub
 
-**Report. Book. Request. Learn.**
+*Report. Book. Request. Learn.*
 
-FixHub is an office-wide ticket and request management platform. Employees can report office problems, book meeting rooms, request office resources, and seek technical or learning assistance — all through one universal ticket engine with type-specific workflows.
+FixHub is a web app for the everyday requests of an office. Staff can report a broken thing, book a room or a lab, ask for equipment or software, or ask a colleague to explain a topic. Each of these is a ticket. They share one ticket engine (numbering, status, comments, files, history, notifications) and each type has its own workflow on top.
 
----
+This README is for developers: how the project is built and how to run it. If you want to use the app, read the [User Guide](docs/user-guide.md).
 
-## Features
+## What it does
 
-| Module | Description |
-|--------|-------------|
-| **Issue Reporting** | Electrical, plumbing, IT/network, furniture, and general maintenance tickets |
-| **Room Booking** | Meeting room availability, booking requests, approval, and conflict prevention |
-| **Resource Requests** | Office equipment requests, inventory management, issuing, and returns |
-| **Learning & Help** | Topic requests, skill-based discovery, voluntary acceptance, and resolution |
+| Module | What happens |
+|---|---|
+| Issue ticket | An employee reports a problem with a category. Routing rules send it to a department. Someone in that department claims it (first one wins, or an admin approves the claim when the author asked for that), works on it, and resolves it. The author confirms or reopens. |
+| Infra booking | A room, lab or space is booked for one or more sessions. The server checks for clashes. An admin approves or rejects. A booking can be partly approved, and it closes by itself after its last session ends. |
+| Resource request | An employee asks for an item from a catalog (hardware, software, cloud, office items). The department approver decides first, then an admin. Physical items have stock that is held and released. |
+| Topic request | An employee picks 1 to 3 topics (skills) and describes the problem. Users who hold a matching approved skill are notified and see it in My queue. One of them takes it, or an admin assigns someone. The helper shares links, files and an explanation. The author says solved or not solved. A helper who gets too busy can hand it back. |
 
-All request types share a universal ticket engine with common identity, status tracking, comments, attachments, history, and notifications.
+All four share the same ticket number sequence, comments, attachments, timeline and bell notifications.
 
----
+## Tech stack
 
-## Technology Stack
+**Backend**
+- Java 23, Spring Boot 4.1
+- Maven (wrapper included)
+- Spring Security with JWT login, Google OAuth 2.0
+- Spring Data JPA, Hibernate
+- PostgreSQL, schema managed by Flyway
+- Springdoc OpenAPI (Swagger UI)
+- Lombok
 
-### Backend
-- Java 23
-- Spring Boot 4.x
-- Maven (with Maven Wrapper)
-- Spring Security
-- Spring Data JPA + Hibernate (`ddl-auto: update`)
-- PostgreSQL
-- Jakarta Bean Validation
-- Springdoc OpenAPI / Swagger
-- JUnit 5 + Mockito
-
-### Frontend
-- React 18
-- JavaScript (JSX)
+**Frontend**
+- React, JavaScript (JSX)
 - Vite
 - React Router
-- Tailwind CSS
-- TanStack Query
-- React Hook Form
+- Tailwind CSS (with a dark theme)
+- lucide-react icons
 
----
+Files are uploaded in parts straight from the browser to object storage with signed links, so file bytes never pass through the backend.
 
-## Project Structure
+## Project structure
 
 ```
 FixHub/
-├── backend/                    # Spring Boot application
+├── backend/
+│   ├── src/main/java/com/fixhub/
+│   │   ├── ticket/          shared ticket engine: rules, workflow, claims, comments, files
+│   │   ├── infra/           bookings and availability
+│   │   ├── resources/       catalog, stock, approvers
+│   │   ├── topic/           skill-routed help requests
+│   │   ├── notification/    the bell
+│   │   ├── user/            users, departments, skills
+│   │   └── common/          auth, storage, shared DTOs
+│   ├── src/main/resources/
+│   │   └── db/migration/    Flyway files, V1 to V19
+│   └── pom.xml
+├── frontend/
 │   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/fixhub/
-│   │   │   └── resources/
-│   │   └── test/
-│   ├── pom.xml
-│   └── mvnw / mvnw.cmd
-├── frontend/                   # React application
-│   ├── src/
-│   ├── public/
+│   │   ├── api/             one file per backend area
+│   │   ├── components/      shared UI and ticket page parts
+│   │   ├── infra/  resources/  topics/    module pages and components
+│   │   └── hooks/  context/  utils/
 │   ├── package.json
 │   └── vite.config.js
 ├── docs/
-│   ├── setup/                  # Setup and configuration guides
-│   └── architecture/           # Architecture and design docs
-├── .env.example                # Environment variable template
-├── .gitignore
+│   ├── setup/               database, environment, first admin
+│   ├── architecture/        structure and design notes
+│   └── user-guide.md        for people who use the app
+├── .env.example
 └── README.md
 ```
 
-See [docs/architecture/project-structure.md](docs/architecture/project-structure.md) for the full structure reference.
+## How the ticket engine works
 
----
+- One `ticket` table holds every type. A `type` column tells them apart.
+- `TicketWorkflow` has one table per type: which status can move to which, and who may do it (assignee, author, admin). The ticket page asks the server which buttons the current user may press, so the rules live in one place.
+- `TicketRules` holds view, edit and claim rules.
+- A type that keeps its own rows plugs in through `TicketLifecycleHook` (booking sessions, topic helper hand-back). The ticket package never imports a type package.
+- Every change writes a row to `ticket_history`, which feeds the Activity timeline.
 
-## Quick Start
+## Running it locally
 
-> **Prerequisites:** Java 23, Node.js 18+, npm 9+, PostgreSQL 14+
+Needs Java 23, Node.js 18 or newer, and PostgreSQL 14 or newer.
 
-### 1. Clone the repository
-
+**1. Clone**
 ```bash
 git clone https://github.com/GauravMishra537/FixHub.git
 cd FixHub
 ```
 
-### 2. Set up PostgreSQL
-
-Create the database and role (if they don't already exist):
-
+**2. Create the database**
 ```sql
--- Connect as a PostgreSQL superuser
+-- as a PostgreSQL superuser
 CREATE ROLE gaurav WITH LOGIN PASSWORD 'your_password';
 CREATE DATABASE fixhub OWNER gaurav;
 ```
+Tables are created by Flyway when the backend starts, so there is nothing else to run. Details are in [database setup](docs/setup/database-setup.md).
 
-See [docs/setup/database-setup.md](docs/setup/database-setup.md) for detailed instructions.
+**3. Settings**
+Set the required values in the terminal that runs the backend (database login and `JWT_SECRET`), or put them in `backend/src/main/resources/application-local.yml`, which is not committed. The list is in [environment variables](docs/setup/environment-variables.md). `.env.example` shows the names.
 
-### 3. Configure environment variables
-
-```bash
-cp .env.example .env
-# Edit .env with your local PostgreSQL credentials
-```
-
-See [docs/setup/environment-variables.md](docs/setup/environment-variables.md) for the full variable reference.
-
-### 4. Start the backend
-
+**4. Start the backend**
 ```bash
 cd backend
-./mvnw spring-boot:run
-# Windows: mvnw.cmd spring-boot:run
+sh mvnw spring-boot:run
 ```
+It runs at http://localhost:8080. Swagger UI is served by Springdoc.
 
-The backend starts at `http://localhost:8080`. Hibernate creates and updates tables automatically on startup.
-
-### 5. Start the frontend
-
+**5. Start the frontend**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+It runs at http://localhost:5173.
 
-The frontend starts at `http://localhost:5173`.
+**6. Make the first admin**
+A one-time command creates the first admin account. See [admin bootstrap](docs/setup/admin-bootstrap.md). After that, new users register, verify their email and wait for the admin to approve them under Users.
 
-### 6. Bootstrap the first administrator
+## Roles and sign-in
 
-After registering through the UI, promote your account using the documented SQL procedure:
+- **ADMIN** manages users, departments, categories, the infra catalog, the resource catalog and approvers. Admins assign tickets and approve bookings and requests. They do not claim tickets.
+- **USER** raises tickets, claims or is assigned work, and can approve resource requests when set as a department approver.
 
-See [docs/setup/admin-bootstrap.md](docs/setup/admin-bootstrap.md)
-
----
+Sign-in is email and password (with email verification and password reset) or Google.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Database Setup](docs/setup/database-setup.md) | PostgreSQL installation and configuration |
-| [Startup Guide](docs/setup/startup-guide.md) | Complete startup instructions for Windows |
-| [Environment Variables](docs/setup/environment-variables.md) | All configuration variables |
-| [Admin Bootstrap](docs/setup/admin-bootstrap.md) | How to create the first administrator |
-| [Project Structure](docs/architecture/project-structure.md) | Folder layout and conventions |
-| [Implementation Roadmap](docs/architecture/implementation-roadmap.md) | Implementation roadmap |
-
----
-
-## Roles
-
-| Role | Description |
-|------|-------------|
-| `ADMIN` | System management, user approval, ticket assignment, configuration |
-| `USER` | Create tickets, be assigned to handle tickets, collaborate |
-
-New accounts start as `PENDING` until an administrator approves them.
-
----
-
-## Authentication
-
-- **Email/password** — Registration, email verification, login, password recovery
-- **Google OAuth 2.0** — Google sign-in with account linking
-
----
+| Document | For |
+|---|---|
+| [User Guide](docs/user-guide.md) | People using FixHub: how to raise, track and handle each kind of request |
+| [Database setup](docs/setup/database-setup.md) | PostgreSQL install and database creation |
+| [Environment variables](docs/setup/environment-variables.md) | Every configuration value |
+| [Admin bootstrap](docs/setup/admin-bootstrap.md) | Creating the first administrator |
+| [Project structure](docs/architecture/project-structure.md) | Folder layout and naming |
+| [Startup guide](docs/setup/startup-guide.md) | Start everything on your machine, step by step |
 
 ## License
 
-This project is for educational and professional development purposes.
+Built for learning and professional development. Not licensed for redistribution.
