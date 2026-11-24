@@ -45,7 +45,7 @@ public class TopicRequestServiceImpl implements TopicRequestService {
 
     private static final int MAX_TITLE = 200;
     private static final int MAX_DESCRIPTION = 5000;
-    private static final int MAX_TOPICS = 3;
+    private static final int MAX_TOPICS = 1;
     private static final int MAX_MESSAGE = 255;
     private static final int MAX_NOTE = 500;
 
@@ -109,10 +109,10 @@ public class TopicRequestServiceImpl implements TopicRequestService {
                 : request.skillIds().stream().filter(Objects::nonNull)
                         .collect(Collectors.toCollection(LinkedHashSet::new)).stream().toList();
         if (ids.isEmpty()) {
-            throw bad("Pick at least one topic");
+            throw bad("Pick a topic");
         }
         if (ids.size() > MAX_TOPICS) {
-            throw bad("Pick at most " + MAX_TOPICS + " topics");
+            throw bad("Pick only one topic");
         }
         Map<Long, Skill> found = skillRepository.findByIdIn(ids).stream()
                 .filter(Skill::isActive)

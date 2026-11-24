@@ -8,13 +8,12 @@ import { PRIORITY_OPTIONS } from '../../utils/options'
 const INPUT =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
-const MAX_TOPICS = 3
 const MAX_TITLE = 200
 const MAX_DESCRIPTION = 5000
 // a search box appears when the list is long
 const SEARCH_FROM = 12
 
-/** Ask for help with 1 to 3 topics. People who know the topic are told. One ticket per problem. */
+/** Ask for help on one topic. People who know it are told. One ticket per problem. */
 export default function TopicRequestPage() {
   const navigate = useNavigate()
 
@@ -22,7 +21,7 @@ export default function TopicRequestPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [picked, setPicked] = useState([]) // skill ids
+  const [topicId, setTopicId] = useState(null) // the one chosen skill id
   const [query, setQuery] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -43,19 +42,16 @@ export default function TopicRequestPage() {
     return q ? skills.filter((s) => s.name.toLowerCase().includes(q)) : skills
   }, [skills, query])
 
-  const full = picked.length >= MAX_TOPICS
+  // nobody holds the chosen topic: an admin will choose a helper
+  const nobody = topicId != null && (skills.find((s) => s.id === topicId)?.helperCount ?? 0) === 0
 
-  // nobody holds any of the picked topics: an admin will choose a helper
-  const nobody =
-    picked.length > 0 && picked.every((id) => (skills.find((s) => s.id === id)?.helperCount ?? 0) === 0)
-
-  const toggle = (id) =>
-    setPicked((list) => (list.includes(id) ? list.filter((x) => x !== id) : full ? list : [...list, id]))
+  // click the chosen chip again to clear it
+  const toggle = (id) => setTopicId((current) => (current === id ? null : id))
 
   const submit = async (e) => {
     e.preventDefault()
     setError('')
-    if (picked.length === 0) return setError('Pick at least one topic')
+    if (topicId == null) return setError('Pick a topic')
     if (!title.trim()) return setError('Give your question a title')
     if (!description.trim()) return setError('Describe your problem')
     setSaving(true)
@@ -63,7 +59,7 @@ export default function TopicRequestPage() {
       const created = await topicsApi.create({
         title: title.trim(),
         description: description.trim(),
-        skillIds: picked,
+        skillIds: [topicId],
         priority,
         visibility: isPrivate ? 'PRIVATE' : 'PUBLIC',
       })
@@ -87,7 +83,7 @@ export default function TopicRequestPage() {
       <div className="mb-5">
         <h1 className="text-xl font-bold text-slate-900">Topic request</h1>
         <p className="text-sm text-slate-500">
-          Stuck on something? Pick the topics, describe the problem, and people who know them will help. Follow it in My
+          Stuck on something? Pick the topic, describe the problem, and people who know it will help. Follow it in My
           Requests on your dashboard.
         </p>
       </div>
@@ -102,12 +98,7 @@ export default function TopicRequestPage() {
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-700">Topics (pick 1 to {MAX_TOPICS})</label>
-                <span className="text-xs text-slate-400">
-                  {picked.length} of {MAX_TOPICS} selected
-                </span>
-              </div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Topic</label>
 
               {skills.length >= SEARCH_FROM && (
                 <div className="relative mb-2">
@@ -123,19 +114,17 @@ export default function TopicRequestPage() {
 
               <div className="flex flex-wrap gap-2">
                 {shown.map((s) => {
-                  const on = picked.includes(s.id)
-                  const blocked = !on && full
+                  const on = topicId === s.id
                   return (
                     <button
                       key={s.id}
                       type="button"
-                      disabled={blocked}
                       onClick={() => toggle(s.id)}
                       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                         on
                           ? 'border-blue-500 bg-blue-50 text-blue-700'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-blue-400'
-                      } ${blocked ? 'cursor-not-allowed opacity-50' : ''}`}
+                      }`}
                     >
                       {on && <Check className="h-3.5 w-3.5" />}
                       {s.name}
@@ -158,7 +147,6 @@ export default function TopicRequestPage() {
                 value={title}
                 maxLength={MAX_TITLE}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. useEffect runs twice in my component"
                 className={INPUT}
               />
             </div>
@@ -170,7 +158,6 @@ export default function TopicRequestPage() {
                 maxLength={MAX_DESCRIPTION}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What are you trying to do? What have you tried? Where are you stuck?"
                 className={INPUT}
               />
               <div className="mt-1 flex items-center justify-between text-xs text-slate-400">

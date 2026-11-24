@@ -312,7 +312,7 @@ export default function TicketDetailContent({ ticketId, layout = 'page', onChang
           </div>
         </Field>
 
-        <Field label={topic ? 'Main topic' : 'Category'}>
+        <Field label={topic ? 'Topic' : 'Category'}>
           <div className="-ml-2">
             <CategoryField
               value={draft.categoryName}
