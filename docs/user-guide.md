@@ -150,7 +150,7 @@ There are two ways:
 - When they press **Share explanation**, you are notified.
 - Then you choose:
   - **Yes, solved**. The ticket closes.
-  - **Not solved yet**. Write what more you need and what is still stuck. The same helper continues.
+  - **Not solved yet**. Write what more you need and what is still stuck. The question goes back to the queue. Anyone with the skill can take it, including the same helper.
 - If your helper becomes too busy, they press **I'm busy**. The ticket goes back to the queue, and other people with the skill or an admin can pick it up. You are told that a new helper is being found.
 
 You can cancel your question while it is waiting for a helper or being helped.

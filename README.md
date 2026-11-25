@@ -13,7 +13,7 @@ This README is for developers: how the project is built and how to run it. If yo
 | Issue ticket | An employee reports a problem with a category. Routing rules send it to a department. Someone in that department claims it (first one wins, or an admin approves the claim when the author asked for that), works on it, and resolves it. The author confirms or reopens. |
 | Infra booking | A room, lab or space is booked for one or more sessions. The server checks for clashes. An admin approves or rejects. A booking can be partly approved, and it closes by itself after its last session ends. |
 | Resource request | An employee asks for an item from a catalog (hardware, software, cloud, office items). The department approver decides first, then an admin. Physical items have stock that is held and released. |
-| Topic request | An employee picks 1 to 3 topics (skills) and describes the problem. Users who hold a matching approved skill are notified and see it in My queue. One of them takes it, or an admin assigns someone. The helper shares links, files and an explanation. The author says solved or not solved. A helper who gets too busy can hand it back. |
+| Topic request | An employee picks 1 to 3 topics (skills) and describes the problem. Users who hold a matching approved skill are notified and see it in My queue. One of them takes it, or an admin assigns someone. The helper shares links, files and an explanation. The author says solved or not solved. If it is not solved, it goes back to the queue and anyone with the skill can take it. |
 
 All four share the same ticket number sequence, comments, attachments, timeline and bell notifications.
 
