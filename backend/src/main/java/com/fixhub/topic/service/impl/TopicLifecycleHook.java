@@ -12,8 +12,6 @@ import com.fixhub.ticket.entity.WorkflowAction;
 import com.fixhub.ticket.repository.TicketClaimRepository;
 import com.fixhub.ticket.repository.TicketHistoryRepository;
 import com.fixhub.ticket.service.TicketLifecycleHook;
-import com.fixhub.topic.entity.TopicDecline;
-import com.fixhub.topic.repository.TopicDeclineRepository;
 import com.fixhub.topic.service.TopicAccess;
 import com.fixhub.user.entity.Role;
 import com.fixhub.user.entity.User;
@@ -21,14 +19,11 @@ import com.fixhub.user.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * "I'm busy": the helper leaves. The ticket goes back to the queue with no helper,
- * the helper cannot claim it again, the admins and the other skilled users are told.
+ * "Not solved yet": the ticket goes back to the queue with no helper.
+ * Anyone with the skill can take it, the same helper too. The old claim ends so he can claim again.
  */
 @Component
 public class TopicLifecycleHook implements TicketLifecycleHook {
@@ -37,20 +32,17 @@ public class TopicLifecycleHook implements TicketLifecycleHook {
     private static final int MAX_NOTE = 500;
 
     private final TicketClaimRepository claimRepository;
-    private final TopicDeclineRepository declineRepository;
     private final TopicAccess access;
     private final TicketHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
     public TopicLifecycleHook(TicketClaimRepository claimRepository,
-                              TopicDeclineRepository declineRepository,
                               TopicAccess access,
                               TicketHistoryRepository historyRepository,
                               UserRepository userRepository,
                               NotificationService notificationService) {
         this.claimRepository = claimRepository;
-        this.declineRepository = declineRepository;
         this.access = access;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
@@ -65,22 +57,22 @@ public class TopicLifecycleHook implements TicketLifecycleHook {
     @Override
     public TicketStatus onTransition(Ticket ticket, WorkflowAction action, TicketStatus from, TicketStatus to,
                                      Long actorId, String note) {
-        if (action != WorkflowAction.BUSY) {
+        if (action != WorkflowAction.REOPEN || ticket.getAssigneeId() == null) {
             return null;
         }
+        Long helperId = ticket.getAssigneeId();
         String reason = note == null ? "" : note.trim();
         String reasonCut = reason.length() > MAX_NOTE ? reason.substring(0, MAX_NOTE) : reason;
-        String helperName = userRepository.findById(actorId).map(User::getFullName).orElse("#" + actorId);
+        String helperName = userRepository.findById(helperId).map(User::getFullName).orElse("#" + helperId);
 
-        // the approved claim ends. the decline row stops a second claim by the same person
-        claimRepository.findByTicketIdAndUserIdAndStatusIn(ticket.getId(), actorId, List.of(ClaimStatus.APPROVED))
+        // the old approved claim ends, so the same helper can claim again
+        claimRepository.findByTicketIdAndUserIdAndStatusIn(ticket.getId(), helperId, List.of(ClaimStatus.APPROVED))
                 .ifPresent(c -> {
                     c.setStatus(ClaimStatus.WITHDRAWN);
                     c.setDecidedBy(actorId);
                     c.setDecidedOn(Instant.now());
                     claimRepository.save(c);
                 });
-        declineRepository.save(new TopicDecline(ticket.getId(), actorId, reasonCut));
 
         // no helper any more. the workflow sets the status to OPEN and saves
         ticket.setAssigneeId(null);
@@ -94,33 +86,30 @@ public class TopicLifecycleHook implements TicketLifecycleHook {
         row.setNote(reasonCut.isEmpty() ? null : reasonCut);
         historyRepository.save(row);
 
-        notifyBusy(ticket, actorId, helperName, reason);
+        notifyQueue(ticket, actorId, helperId, reason);
         return null;
     }
 
-    private void notifyBusy(Ticket ticket, Long actorId, String helperName, String reason) {
+    private void notifyQueue(Ticket ticket, Long actorId, Long helperId, String reason) {
         String label = ticket.getTicketNo() + " (" + ticket.getTitle() + ")";
         String why = reason.isEmpty() ? "" : ": " + reason;
+        String who = userRepository.findById(actorId).map(User::getFullName).orElse("#" + actorId);
 
-        // admins can assign someone else
-        List<Long> admins = userRepository.findIdsByRole(Role.ADMIN).stream()
-                .filter(id -> !id.equals(actorId))
-                .toList();
-        send(admins, NotificationType.TOPIC_HELPER_BUSY, ticket,
-                helperName + " is busy and left " + label + why + ". Please assign another helper");
+        // the helper who had it hears why. he sees it in the queue again
+        send(List.of(helperId), NotificationType.TICKET_REOPENED, ticket,
+                who + " says " + label + " is not solved yet" + why + ". It is back in the queue");
 
-        // other skilled people can click "I can help". not the one who left, not earlier decliners
-        Set<Long> skip = new HashSet<>(declineRepository.findByTicketIdOrderByCreatedOnAsc(ticket.getId()).stream()
-                .map(TopicDecline::getUserId)
-                .collect(Collectors.toSet()));
-        skip.add(actorId);
-        List<Long> others = access.helperIds(ticket).stream().filter(id -> !skip.contains(id)).toList();
-        send(others, NotificationType.TOPIC_HELP_NEEDED, ticket, "Help needed again on " + label);
+        // everyone else with the skill can take it
+        List<Long> others = access.helperIds(ticket).stream().filter(id -> !id.equals(helperId)).toList();
+        send(others, NotificationType.TOPIC_HELP_NEEDED, ticket, "Help needed again on " + label + why);
 
-        // the author hears that a new helper is being found
-        if (!ticket.getAuthorId().equals(actorId)) {
-            send(List.of(ticket.getAuthorId()), NotificationType.TICKET_STATUS, ticket,
-                    helperName + " is busy. We are finding another helper for " + label);
+        // nobody has the skill at all: an admin picks a helper
+        if (access.helperIds(ticket).isEmpty()) {
+            List<Long> admins = userRepository.findIdsByRole(Role.ADMIN).stream()
+                    .filter(id -> !id.equals(actorId))
+                    .toList();
+            send(admins, NotificationType.TOPIC_HELP_NEEDED, ticket,
+                    "Not solved yet and no one has the skill. Please assign a helper to " + label);
         }
     }
 

@@ -89,19 +89,16 @@ public class TicketWorkflow {
 
         // ---------- topic request ----------
         // helper (the assignee) starts and shares an explanation. the author says solved or not solved.
-        // "I'm busy" sends the ticket back to the queue (TopicLifecycleHook clears the helper)
+        // "Not solved yet" puts the ticket back in the queue with no helper (TopicLifecycleHook clears it)
         Map<WorkflowAction, Rule> topic = new EnumMap<>(WorkflowAction.class);
         topic.put(WorkflowAction.START,
                 new Rule(Set.of(TicketStatus.ASSIGNED, TicketStatus.REOPENED), TicketStatus.IN_PROGRESS, By.ASSIGNEE));
         topic.put(WorkflowAction.RESOLVE,
                 new Rule(Set.of(TicketStatus.IN_PROGRESS), TicketStatus.RESOLVED, By.ASSIGNEE));
-        topic.put(WorkflowAction.BUSY,
-                new Rule(Set.of(TicketStatus.ASSIGNED, TicketStatus.IN_PROGRESS, TicketStatus.REOPENED),
-                        TicketStatus.OPEN, By.ASSIGNEE));
         topic.put(WorkflowAction.CONFIRM,
                 new Rule(Set.of(TicketStatus.RESOLVED), TicketStatus.CLOSED, By.REQUESTER_OR_ADMIN));
         topic.put(WorkflowAction.REOPEN,
-                new Rule(Set.of(TicketStatus.RESOLVED), TicketStatus.REOPENED, By.REQUESTER));
+                new Rule(Set.of(TicketStatus.RESOLVED), TicketStatus.OPEN, By.REQUESTER));
         topic.put(WorkflowAction.CANCEL,
                 new Rule(Set.of(TicketStatus.OPEN, TicketStatus.ASSIGNED, TicketStatus.REOPENED),
                         TicketStatus.CANCELLED, By.REQUESTER));
@@ -111,7 +108,6 @@ public class TicketWorkflow {
         Map<WorkflowAction, Look> topicLooks = new EnumMap<>(WorkflowAction.class);
         topicLooks.put(WorkflowAction.START, new Look("Start", false));
         topicLooks.put(WorkflowAction.RESOLVE, new Look("Share explanation", false));
-        topicLooks.put(WorkflowAction.BUSY, new Look("I'm busy", true));
         topicLooks.put(WorkflowAction.CONFIRM, new Look("Yes, solved", false));
         topicLooks.put(WorkflowAction.REOPEN, new Look("Not solved yet", true));
         LOOKS.put(TicketType.TOPIC_REQUEST, topicLooks);
